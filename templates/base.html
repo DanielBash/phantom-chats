@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}{{ title or "Phantom Chats" }}{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" type="image/x-icon"
+        href="{{ url_for('static', filename='images/favicon.ico') }}?v={{ range(1000)|random }}">
+</head>
+
+<body>
+
+<header class="container">
+  <div style="text-align: center;">
+    <hgroup>
+      <h1>Phantom Chats</h1>
+      <p>
+        {% if session.user_id %}
+          Приветствуем, <strong>{{ user.username }}</strong>!
+        {% else %}
+          Вы не зашли, надо
+          <a href="{{ url_for('registration.login') }}">авторизоваться</a>!
+        {% endif %}
+      </p>
+    </hgroup>
+  </div>
+
+</header>
+
+<main class="container">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <article role="alert">
+          {{ message }}
+        </article>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <section>
+    {% block content %}{% endblock %}
+  </section>
+
+</main>
+
+<script src="{{ url_for('static', filename='js/theme-switcher.js') }}"></script>
+</body>
+</html>

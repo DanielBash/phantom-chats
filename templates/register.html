@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Зарегистрироваться{% endblock %}
+
+{% block content %}
+<article style="max-width:520px; margin:2.5rem auto;">
+  <header style="text-align: center;">
+    <h2>Регистрация</h2>
+    <p class="muted">Создайте аккаунт, чтобы начать использовать Phantom Chats</p>
+  </header>
+
+  <form id="registerForm" method="POST" action="{{ url_for('registration.register') }}" novalidate>
+    <label for="username">
+      Имя пользователя
+      <input
+        type="text"
+        id="username"
+        name="username"
+        required
+        minlength="3"
+        maxlength="32"
+        pattern="[a-zA-Z0-9_]+"
+        title="Только буквы, цифры и нижние подчёркивания"
+        autocomplete="username"
+        placeholder="Имя"
+      >
+    </label>
+
+    <label for="password">
+      Пароль
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+        minlength="8"
+        autocomplete="new-password"
+        placeholder="Пароль"
+        aria-describedby="pwHelp"
+      >
+      <small id="pwHelp">Минимум 8 символов.</small>
+    </label>
+
+    <label for="password_confirm">
+      Подтверждение пароля
+      <input
+        type="password"
+        id="password_confirm"
+        name="password_confirm"
+        required
+        minlength="8"
+        autocomplete="new-password"
+        placeholder="Повторите пароль"
+        aria-describedby="pwMatch"
+      >
+    </label>
+
+    <div role="status" aria-live="polite" id="pwMatch" style="min-height:1.2em;"></div>
+
+    <div>
+      <button id="submitBtn" type="submit">Зарегистрироваться</button>
+    </div>
+
+    <footer style="text-align:center; margin-top:0.75rem;">
+      <small>
+        Уже есть аккаунт? <a href="{{ url_for('registration.login') }}">Войти</a>
+      </small>
+    </footer>
+  </form>
+</article>
+{% endblock %}

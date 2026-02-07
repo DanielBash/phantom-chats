@@ -1,0 +1,15 @@
+"""СКРИПТ:Настройки gunicorn"""
+
+bind = "127.0.0.1:5000"
+workers = 1
+worker_class = "eventlet"
+worker_connections = 1000
+timeout = 30
+keepalive = 2
+spew = False
+
+accesslog = "/var/log/gunicorn/access.log"
+errorlog = "/var/log/gunicorn/error.log"
+loglevel = "info"
+
+proc_name = "phantomchats_gunicorn"

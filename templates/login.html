@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Войти{% endblock %}
+
+{% block content %}
+<article style="max-width:480px; margin:2.5rem auto;">
+  <header style="text-align: center;">
+    <h2>Вход</h2>
+  </header>
+
+  <form method="POST" action="{{ url_for('registration.login') }}" novalidate>
+    <label for="username">
+      Имя пользователя
+      <input
+        type="text"
+        id="username"
+        name="username"
+        required
+        minlength="3"
+        maxlength="32"
+        pattern="[a-zA-Z0-9_]+"
+        title="Только буквы, цифры и нижние подчёркивания"
+        autocomplete="username"
+        placeholder="Имя"
+      >
+    </label>
+
+    <label for="password">
+      Пароль
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+        minlength="8"
+        autocomplete="current-password"
+        placeholder="Пароль"
+      >
+    </label>
+
+    <div>
+      <button type="submit">Войти</button>
+    </div>
+
+    <footer style="text-align:center; margin-top:0.75rem;">
+      <small>
+        Нет аккаунта? <a href="{{ url_for('registration.register') }}">Зарегистрироваться</a>
+      </small>
+    </footer>
+  </form>
+</article>
+{% endblock %}
