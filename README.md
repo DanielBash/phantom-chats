@@ -31,3 +31,14 @@ nano .env # добавьте секретные переменные для ис
 ```bash
 python mian.py
 ```
+
+### ВАРИАНТ 2: Docker-контейнер
+1) Скачать контейнер с docker hub:
+```bash
+docker pull danielbashl/phantomchats:latest
+```
+
+2) Запустить контейнер:
+```bash
+docker run -d -p 8000:5000 danielbashl/phantomchats:latest
+```
