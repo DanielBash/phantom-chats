@@ -2,18 +2,66 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineSettings
 from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtCore import QObject, pyqtSlot, QUrl, Qt
+from PyQt6.QtCore import QObject, pyqtSlot, QUrl, Qt, QSettings, QTimer
 import sys
 import os
 import base64
 import json
 import html
+import shutil
 from pathlib import Path
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from styles import defult_ava, angle_alf, numbers
 from network import make_server_request_async, messenger_api
+
+LOCAL_PREF_DEFAULTS = {
+    'hide_contacts_status': False,
+    'read_receipts': False,
+    'notifications_enabled': True,
+    'sound_enabled': True,
+    'preview_enabled': True,
+    'enter_send': True,
+    'markdown_enabled': True,
+    'autoload_images': True,
+    'autoplay_video': True,
+    'video_sound': False,
+    'sse_reconnect': True,
+    'theme': 'light',
+    'font_size': 'medium',
+}
+
+ALLOWED_LOCAL_KEYS = set(LOCAL_PREF_DEFAULTS.keys())
+ALLOWED_PRIVACY_KEYS = {'hide_online_status'}
+
+
+def _qsettings():
+    return QSettings("Phantom", "Messenger")
+
+
+def load_local_pref(key, default=None):
+    if key not in ALLOWED_LOCAL_KEYS:
+        return default
+    s = _qsettings()
+    val = s.value(f"prefs/{key}")
+    if val is None:
+        return LOCAL_PREF_DEFAULTS.get(key, default)
+    if isinstance(LOCAL_PREF_DEFAULTS.get(key), bool):
+        return val in (True, 'true', 'True', 1, '1')
+    return val
+
+
+def save_local_pref(key, value):
+    if key not in ALLOWED_LOCAL_KEYS:
+        return False
+    s = _qsettings()
+    s.setValue(f"prefs/{key}", value)
+    return True
+
+
+def load_all_local_prefs():
+    return {k: load_local_pref(k) for k in ALLOWED_LOCAL_KEYS}
 
 
 class SettingsBridge(QObject):
@@ -76,6 +124,26 @@ class SettingsBridge(QObject):
     def logout(self):
         # - выход из аккаунта"
         self.settings_window.logout()
+
+    @pyqtSlot(str, bool)
+    def savePrivacy(self, key, value):
+        self.settings_window.save_privacy_pref(key, bool(value))
+
+    @pyqtSlot(str, bool)
+    def saveLocalPref(self, key, value):
+        self.settings_window.save_local_pref(key, bool(value))
+
+    @pyqtSlot(str, str)
+    def saveLocalPrefStr(self, key, value):
+        self.settings_window.save_local_pref(key, str(value))
+
+    @pyqtSlot()
+    def clearMediaCache(self):
+        self.settings_window.clear_media_cache()
+
+    @pyqtSlot()
+    def resetSessions(self):
+        self.settings_window.reset_local_sessions()
 
 
 class SettingsWindow(QWidget):
@@ -182,6 +250,9 @@ class SettingsWindow(QWidget):
             'user_id': self.main_window.user_id,
             'session_token': self.main_window.session_token
         }, handle_info_response)
+
+        QTimer.singleShot(80, self.push_local_preferences)
+        QTimer.singleShot(160, self.push_privacy_preferences)
 
     def change_name(self, new_name):
         if len(new_name) < 4 or len(new_name) > 20:
@@ -400,6 +471,79 @@ class SettingsWindow(QWidget):
 
     def logout(self):
         self.main_window.logout()
+
+    def push_local_preferences(self):
+        prefs = load_all_local_prefs()
+        self._safe_run_js(f'applyLocalPreferences({json.dumps(prefs)});')
+
+    def push_privacy_preferences(self):
+        def handle(resp):
+            if resp and resp.get('success'):
+                payload = {'hide_online_status': bool(resp.get('hide_online_status'))}
+                self._safe_run_js(f'applyPrivacyPreferences({json.dumps(payload)});')
+        try:
+            messenger_api.get_privacy_preferences(handle)
+        except Exception:
+            pass
+
+    def save_privacy_pref(self, key, value):
+        if key not in ALLOWED_PRIVACY_KEYS:
+            return
+        if key == 'hide_online_status':
+            def handle(resp):
+                if resp and resp.get('success'):
+                    if value:
+                        self._safe_run_js('showToast("Статус скрыт. Сервер не собирает данные.");')
+                    else:
+                        self._safe_run_js('showToast("Статус включён.");')
+                else:
+                    err = resp.get('error', 'Не удалось сохранить') if resp else 'Ошибка соединения'
+                    safe = html.escape(err).replace('"', '\\"').replace("'", "\\'")
+                    self._safe_run_js(f'showToast("Ошибка: {safe}", true);')
+            try:
+                messenger_api.save_privacy_preferences(value, handle)
+            except Exception as exc:
+                safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
+                self._safe_run_js(f'showToast("Ошибка: {safe}", true);')
+
+    def save_local_pref(self, key, value):
+        if save_local_pref(key, value):
+            self._safe_run_js('showToast("Сохранено");')
+
+    def clear_media_cache(self):
+        from utils import DATA_PATH
+        try:
+            shutil.rmtree(DATA_PATH / 'cache', ignore_errors=True)
+            shutil.rmtree(DATA_PATH / 'files_cache' / str(self.main_window.user_id),
+                          ignore_errors=True)
+            shutil.rmtree(DATA_PATH / 'avatars', ignore_errors=True)
+            (DATA_PATH / 'avatars').mkdir(parents=True, exist_ok=True)
+            self._safe_run_js('showToast("Кэш медиа очищен");')
+        except Exception as exc:
+            safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
+            self._safe_run_js(f'showToast("Ошибка очистки: {safe}", true);')
+
+    def reset_local_sessions(self):
+        from utils import DATA_PATH
+        login = messenger_api.user_login or ''
+        if not login:
+            self._safe_run_js('showToast("Не определён логин", true);')
+            return
+        try:
+            sessions_dir = DATA_PATH / 'crypto' / login / 'sessions'
+            shutil.rmtree(sessions_dir, ignore_errors=True)
+            sessions_dir.mkdir(parents=True, exist_ok=True)
+            if messenger_api.session_manager:
+                try:
+                    messenger_api.session_manager._sessions.clear()
+                except Exception:
+                    pass
+            self._safe_run_js(
+                'showToast("Сессии сброшены. Контакт должен написать первым.");'
+            )
+        except Exception as exc:
+            safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
+            self._safe_run_js(f'showToast("Ошибка: {safe}", true);')
 
     def closeEvent(self, event):
         self._destroyed = True

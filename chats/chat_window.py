@@ -52,6 +52,10 @@ class Bridge(QObject):
     def downloadFile(self, file_id, file_info_json):
         self.chat_window.download_file(file_id, json.loads(file_info_json))
 
+    @pyqtSlot(int, str)
+    def openVideo(self, file_id, file_info_json):
+        self.chat_window.open_video(file_id, json.loads(file_info_json))
+
     @pyqtSlot(str)
     def addContact(self, login):
         self.chat_window.add_contact(login)
@@ -162,6 +166,8 @@ class ChatWindow(QWidget):
         self.cur_contact = None
         self.contacts = {}
         self.contact_avatars = {}
+        self.contact_statuses = {}
+        self._video_meta_cache = {}
         self.script_dir = Path(BASE_PATH)
         self.page_loaded = False
         self.e2ee_ready = False
@@ -179,11 +185,22 @@ class ChatWindow(QWidget):
         self.sync_timer.setInterval(60000)
         self.contacts_need_update = False
 
+        self.heartbeat_timer = QTimer()
+        self.heartbeat_timer.timeout.connect(self._send_heartbeat_tick)
+        self.heartbeat_timer.setInterval(60000)
+
+        self.status_refresh_timer = QTimer()
+        self.status_refresh_timer.timeout.connect(self.refresh_contacts_status)
+        self.status_refresh_timer.setInterval(120000)
+
         self.init_ui()
         self.load_contacts()
         self.setup_msg_listener()
         self.avatar_timer.start()
         self.sync_timer.start()
+        self._send_heartbeat_tick()
+        self.heartbeat_timer.start()
+        self.status_refresh_timer.start()
 
     def _safe_run_js(self, js_code):
         if self._destroyed:
@@ -242,6 +259,10 @@ class ChatWindow(QWidget):
             if self.cur_contact:
                 self.load_messages(self.cur_contact.login)
             self.sync_all_contacts()
+            if self.contact_statuses:
+                self._safe_run_js(
+                    f'setContactStatuses({json.dumps(self.contact_statuses)});'
+                )
 
     def load_user_data(self):
         if not self.page_loaded:
@@ -393,6 +414,7 @@ class ChatWindow(QWidget):
         self._safe_run_js(f'setMessages({json.dumps(obrabotannyye)});')
         self.ensure_msg_previews(aktualnyy.user_id, soobshenia)
         self.sync_contact_msgs(aktualnyy)
+        self._update_chat_header_status(aktualnyy.login)
 
     def send_message(self, receiver_login, text):
         if not receiver_login or not text:
@@ -437,19 +459,23 @@ class ChatWindow(QWidget):
         params = json.loads(params_json)
         tekst_vvoda = params.get('text', '')
         tolko_kartinka = params.get('isImageOnly', False)
+        tolko_video = params.get('isVideoOnly', False)
 
-        if tolko_kartinka:
+        if tolko_video:
+            filtr = "Видео (*.mp4 *.mov *.webm *.mkv *.avi)"
+        elif tolko_kartinka:
             filtr = "Изображения (*.jpg *.jpeg *.png *.gif *.bmp)"
         else:
             filtr = ("Все файлы (*);;Изображения (*.jpg *.jpeg *.png *.gif *.bmp *.webp);;"
+                     "Видео (*.mp4 *.mov *.webm *.mkv *.avi);;"
                      "Документы (*.pdf *.doc *.docx *.txt *.xls *.xlsx *.ppt *.pptx)")
 
         put_fayla, _ = QFileDialog.getOpenFileName(self, "Выбрать файл", "", filtr)
         if not put_fayla:
             return
 
-        if os.path.getsize(put_fayla) > 10 * 1024 * 1024:
-            self._safe_run_js('showToast("Файл слишком большой (максимум 10MB)", true);')
+        if os.path.getsize(put_fayla) > 1000 * 1024 * 1024:
+            self._safe_run_js('showToast("Файл слишком большой (максимум 1000MB)", true);')
             return
 
         imya_fayla = os.path.basename(put_fayla)
@@ -457,19 +483,33 @@ class ChatWindow(QWidget):
         if not tip_fayla:
             tip_fayla = "application/octet-stream"
 
-        if tip_fayla.lower().startswith('video/') and os.path.getsize(put_fayla) > 1024 * 1024:
-            self._safe_run_js('showToast("Видео не должно превышать 1 MB", true);')
+        is_video = tip_fayla.lower().startswith('video/') or tolko_video
+        if is_video and os.path.getsize(put_fayla) > 5 * 1024 * 1024:
+            self._safe_run_js('showToast("Видео не должно превышать 5 MB", true);')
             return
 
         self._safe_run_js('showProgress(0);')
         with open(put_fayla, 'rb') as f:
             dannyye = f.read()
 
+        inline_render = tolko_kartinka or is_video
+
+        video_meta = None
+        thumb_bytes = None
+        if is_video:
+            try:
+                from chats.video_utils import probe_video
+                duration_ms, thumb_bytes = probe_video(put_fayla)
+                video_meta = {'duration_ms': duration_ms}
+            except Exception:
+                video_meta = {'duration_ms': 0}
+                thumb_bytes = None
+
         def handle_upload_otvet(otvet):
             self._safe_run_js('showProgress(100);')
             if otvet and otvet.get('success'):
                 self._send_msg_with_file(otvet.get('file_id'), tekst_vvoda,
-                                         imya_fayla, tip_fayla, tolko_kartinka)
+                                         imya_fayla, tip_fayla, inline_render)
             else:
                 oshibka = otvet.get('error', 'Неизвестная ошибка') if otvet else 'Ошибка соединения'
                 safe_error = html.escape(oshibka).replace('"', '\\"').replace("'", "\\'")
@@ -480,25 +520,34 @@ class ChatWindow(QWidget):
             'user_id': self.main_window.user_id,
             'file_name': imya_fayla,
             'file_type': tip_fayla,
-            'is_image_only': tolko_kartinka,
+            'is_image_only': inline_render,
             'session_token': self.main_window.session_token
         }
 
         login_poluchatelya = self.cur_contact.login
-        if messenger_api.session_manager:
-            try:
-                enc = messenger_api.encrypt_file_data(dannyye, None,
-                                                      receiver_login=login_poluchatelya)
-                payload['file_data'] = enc['ciphertext']
-                payload['encrypted_key'] = enc['encrypted_key']
-                payload['nonce_file'] = enc['nonce_file']
-                payload['is_encrypted'] = 1
-            except SessionError as exc:
-                safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
-                self._safe_run_js(f'showToast("E2EE: {safe}", true);')
-                return
-        else:
-            payload['file_data'] = base64.b64encode(dannyye).decode('utf-8')
+        if not messenger_api.session_manager:
+            self._safe_run_js(
+                'showToast("E2EE не инициализирован - файл не отправлен. '
+                'Перелогиньтесь, чтобы восстановить шифрование.", true);'
+            )
+            return
+        try:
+            enc = messenger_api.encrypt_file_data(
+                dannyye, thumb_bytes,
+                receiver_login=login_poluchatelya,
+                video_meta=video_meta,
+            )
+            payload['file_data'] = enc['ciphertext']
+            payload['encrypted_key'] = enc['encrypted_key']
+            payload['nonce_file'] = enc['nonce_file']
+            payload['is_encrypted'] = 1
+            if 'thumbnail' in enc:
+                payload['thumbnail'] = enc['thumbnail']
+                payload['nonce_thumbnail'] = enc['nonce_thumbnail']
+        except SessionError as exc:
+            safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
+            self._safe_run_js(f'showToast("E2EE: {safe}", true);')
+            return
 
         make_server_request_async('upload_file', payload, handle_upload_otvet)
 
@@ -521,13 +570,17 @@ class ChatWindow(QWidget):
                 safe_error = html.escape(oshibka).replace('"', '\\"').replace("'", "\\'")
                 self._safe_run_js(f'showToast("Ошибка: {safe_error}", true);')
 
-        handle_send_otvet(messenger_api.send_message(
-            token=self.main_window.user_token,
-            user_id=self.main_window.user_id,
-            receiver_login=self.cur_contact.login,
-            text=polnyy_tekst,
-            file_id=file_id
-        ))
+        try:
+            handle_send_otvet(messenger_api.send_message(
+                token=self.main_window.user_token,
+                user_id=self.main_window.user_id,
+                receiver_login=self.cur_contact.login,
+                text=polnyy_tekst,
+                file_id=file_id
+            ))
+        except SessionError as exc:
+            safe = html.escape(str(exc)).replace('"', '\\"').replace("'", "\\'")
+            self._safe_run_js(f'showToast("E2EE: {safe}", true);')
 
     def download_file(self, file_id, file_info):
         if messenger_api.file_cache and messenger_api.file_cache.has_file(file_id):
@@ -565,6 +618,67 @@ class ChatWindow(QWidget):
             'include_thumbnail': True,
             'session_token': self.main_window.session_token
         }, handle_file_otvet)
+
+    def open_video(self, file_id, file_info):
+        sender_login = file_info.get('sender_login') or ''
+        file_type = file_info.get('type') or 'video/mp4'
+
+        def emit_data_url(data_bytes):
+            b64 = base64.b64encode(data_bytes).decode('ascii')
+            data_url = f'data:{file_type};base64,{b64}'
+            safe_name = html.escape(file_info.get('name') or 'video').replace('"', '\\"').replace("'", "\\'")
+            self._safe_run_js(
+                f'showVideoPlayer({json.dumps(data_url)}, "{safe_name}", {file_id});'
+            )
+
+        if messenger_api.file_cache and messenger_api.file_cache.has_file(file_id):
+            cached = messenger_api.file_cache.get_file_data(file_id)
+            if cached:
+                emit_data_url(cached)
+                return
+
+        self._safe_run_js('showProgress(0);')
+
+        def handle(otvet):
+            self._safe_run_js('showProgress(100);')
+            if not otvet or not otvet.get('success'):
+                err = otvet.get('error', 'Не удалось загрузить видео') if otvet else 'Ошибка соединения'
+                safe = html.escape(err).replace('"', '\\"').replace("'", "\\'")
+                self._safe_run_js(f'showToast("{safe}", true);')
+                return
+            try:
+                raw = base64.b64decode(otvet.get('file_data'))
+                plain = self._decrypt_file_bytes(
+                    raw, file_info, sender_login=sender_login
+                )
+            except Exception:
+                plain = None
+            if plain is None:
+                self._safe_run_js('showToast("Ошибка расшифровки видео", true);')
+                return
+            if messenger_api.file_cache:
+                existing_info = messenger_api.file_cache.get_file_info(file_id)
+                existing_thumb = (
+                    messenger_api.file_cache.get_thumbnail_data(file_id)
+                    if existing_info else None
+                )
+                messenger_api.file_cache.save_file(
+                    file_id,
+                    file_info.get('name', 'video.mp4'),
+                    file_type,
+                    len(plain),
+                    plain,
+                    existing_thumb,
+                )
+            emit_data_url(plain)
+
+        make_server_request_async('get_file', {
+            'user_token': self.main_window.user_token,
+            'user_id': self.main_window.user_id,
+            'file_id': file_id,
+            'include_data': True,
+            'session_token': self.main_window.session_token
+        }, handle)
 
     def save_file_dialog(self, file_name, dannyye):
         from PyQt6.QtCore import QCoreApplication
@@ -697,6 +811,55 @@ class ChatWindow(QWidget):
     def setup_msg_listener(self):
         messenger_api.network_manager.message_received.connect(self.on_msg_received)
         messenger_api.network_manager.avatar_updated.connect(self.on_avatar_updated)
+        messenger_api.network_manager.contact_status_changed.connect(self.on_contact_status_changed)
+
+    def _send_heartbeat_tick(self):
+        if self._destroyed:
+            return
+        try:
+            messenger_api.send_heartbeat()
+        except Exception:
+            pass
+
+    def refresh_contacts_status(self):
+        if self._destroyed:
+            return
+
+        def handle(otvet):
+            if not otvet or not otvet.get('success'):
+                return
+            statuses = otvet.get('statuses') or {}
+            self.contact_statuses = statuses
+            if self.page_loaded:
+                self._safe_run_js(f'setContactStatuses({json.dumps(statuses)});')
+                if self.cur_contact:
+                    self._update_chat_header_status(self.cur_contact.login)
+
+        try:
+            messenger_api.get_contacts_status(handle)
+        except Exception:
+            pass
+
+    def on_contact_status_changed(self, payload):
+        login = payload.get('login')
+        if not login:
+            return
+        status_obj = {
+            'status': payload.get('status', 'offline'),
+            'last_seen': payload.get('last_seen'),
+        }
+        self.contact_statuses[login] = status_obj
+        if self.page_loaded:
+            self._safe_run_js(
+                f'updateContactStatus("{login}", {json.dumps(status_obj)});'
+            )
+            if self.cur_contact and self.cur_contact.login == login:
+                self._update_chat_header_status(login)
+
+    def _update_chat_header_status(self, login):
+        status_obj = self.contact_statuses.get(login)
+        payload = json.dumps(status_obj) if status_obj else 'null'
+        self._safe_run_js(f'updateChatHeaderStatus("{login}", {payload});')
 
     def on_msg_received(self, message_data):
         login_kontakta = (message_data['receiver_login']
@@ -801,6 +964,7 @@ class ChatWindow(QWidget):
             self.load_user_data()
             self.preload_all_imgs()
             QTimer.singleShot(400, self.load_contact_settings)
+            QTimer.singleShot(500, self.refresh_contacts_status)
 
     def sync_all_contacts(self):
         for kontakt in self.contacts.values():
@@ -841,16 +1005,48 @@ class ChatWindow(QWidget):
     def preload_all_imgs(self):
         for kontakt in self.contacts.values():
             for msg in self.msg_cache.load_messages(kontakt.user_id):
-                if msg.get('has_file') and msg.get('file_info') and msg['file_info'].get('is_image_only'):
-                    file_id = msg['file_info']['id']
+                if not (msg.get('has_file') and msg.get('file_info')):
+                    continue
+                fi = msg['file_info']
+                if not fi.get('is_image_only'):
+                    continue
+                file_id = fi['id']
+                file_type = fi.get('type', '') or ''
+                is_video = file_type.startswith('video/')
+                if is_video:
+                    have_thumb = (
+                        messenger_api.file_cache
+                        and messenger_api.file_cache.get_thumbnail_data(file_id) is not None
+                    )
+                    if not have_thumb:
+                        self._load_video_thumbnail(file_id, msg['id'], kontakt.user_id, fi)
+                else:
                     if not messenger_api.file_cache or not messenger_api.file_cache.has_file(file_id):
                         self._load_file_preview_bg(file_id, msg['id'], kontakt.user_id)
 
     def ensure_msg_previews(self, contact_user_id, soobshenia):
         for msg in soobshenia:
-            if msg.get('has_file') and msg.get('file_info') and msg['file_info'].get('is_image_only'):
-                file_id = msg['file_info']['id']
-                if not messenger_api.file_cache or not messenger_api.file_cache.has_file(file_id):
+            if not (msg.get('has_file') and msg.get('file_info')):
+                continue
+            fi = msg['file_info']
+            if not fi.get('is_image_only'):
+                continue
+            file_id = fi['id']
+            file_type = fi.get('type', '') or ''
+            is_video = file_type.startswith('video/')
+            already_have_thumb = (
+                messenger_api.file_cache
+                and messenger_api.file_cache.get_thumbnail_data(file_id) is not None
+            )
+            already_have_full = (
+                messenger_api.file_cache
+                and messenger_api.file_cache.has_file(file_id)
+            )
+            if is_video:
+                if not already_have_thumb:
+                    self._load_video_thumbnail(file_id, msg['id'], contact_user_id, fi)
+            else:
+                if not already_have_full:
                     self._load_file_preview(file_id, msg['id'], contact_user_id)
 
     def _load_file_preview(self, file_id, message_id, contact_user_id):
@@ -887,6 +1083,56 @@ class ChatWindow(QWidget):
             'include_data': True,
             'session_token': self.main_window.session_token
         }, handle_otvet)
+
+    def _load_video_thumbnail(self, file_id, message_id, contact_user_id, file_info):
+        sender_login = file_info.get('sender_login') or ''
+        encrypted_key = file_info.get('encrypted_key')
+        nonce_thumb_b64 = file_info.get('nonce_thumbnail')
+        if not encrypted_key or not nonce_thumb_b64 or not messenger_api.session_manager:
+            return
+
+        def handle(otvet):
+            if not otvet or not otvet.get('success'):
+                return
+            thumb_b64 = otvet.get('thumbnail')
+            if not thumb_b64:
+                return
+            try:
+                enc_thumb = base64.b64decode(thumb_b64)
+                nonce_thumb = base64.b64decode(nonce_thumb_b64)
+                thumb_plain = messenger_api.decrypt_file_thumbnail(
+                    enc_thumb, nonce_thumb, encrypted_key, sender_login
+                )
+            except Exception:
+                return
+            if messenger_api.file_cache:
+                info = messenger_api.file_cache.get_file_info(file_id)
+                if not info:
+                    messenger_api.file_cache.save_file(
+                        file_id,
+                        file_info.get('name', 'video.mp4'),
+                        file_info.get('type', 'video/mp4'),
+                        file_info.get('size', 0),
+                        b'', thumb_plain,
+                    )
+                else:
+                    thumb_path = messenger_api.file_cache.cache_dir / f"thumb_{file_id}.jpg"
+                    thumb_path.write_bytes(thumb_plain)
+                    info['thumbnail_path'] = str(thumb_path)
+                    messenger_api.file_cache.save_metadata()
+            thumb_b64_out = base64.b64encode(thumb_plain).decode('utf-8')
+            self._safe_run_js(
+                f'updateMessageThumbnail({message_id}, "{thumb_b64_out}");'
+            )
+
+        make_server_request_async('get_file', {
+            'user_token': self.main_window.user_token,
+            'user_id': self.main_window.user_id,
+            'file_id': file_id,
+            'include_data': False,
+            'include_thumbnail': True,
+            'session_token': self.main_window.session_token
+        }, handle)
 
     def _load_file_preview_bg(self, file_id, message_id, contact_user_id):
         def handle_otvet(otvet):
@@ -994,16 +1240,35 @@ class ChatWindow(QWidget):
             fi.setdefault('is_encrypted', False)
             fi.setdefault('encrypted_key', None)
             fi.setdefault('nonce_file', None)
+            fi.setdefault('nonce_thumbnail', None)
             kopiya['is_image_only'] = fi.get('is_image_only', False)
-            if fi.get('is_image_only') and fi['type'].startswith('image/'):
+
+            file_type = fi.get('type', '') or ''
+            is_video_file = file_type.startswith('video/')
+            fi['is_video'] = is_video_file
+
+            if is_video_file and fi.get('encrypted_key') and messenger_api.session_manager:
+                cached_meta = self._video_meta_cache.get(fi['id'])
+                if cached_meta is None:
+                    try:
+                        meta = messenger_api.peek_file_meta(
+                            fi['encrypted_key'], fi['sender_login']
+                        )
+                        cached_meta = meta or {}
+                        self._video_meta_cache[fi['id']] = cached_meta
+                    except Exception:
+                        cached_meta = {}
+                if cached_meta.get('duration_ms'):
+                    fi['duration_ms'] = int(cached_meta['duration_ms'])
+
+            if fi.get('is_image_only') and (file_type.startswith('image/') or is_video_file):
                 if messenger_api.file_cache:
                     dannyye = messenger_api.file_cache.get_file_data(fi['id'])
-                    if dannyye:
-                        prevyu = messenger_api.file_cache.get_thumbnail_data(fi['id'])
-                        if prevyu:
-                            fi['thumbnail'] = base64.b64encode(prevyu).decode('utf-8')
+                    prevyu = messenger_api.file_cache.get_thumbnail_data(fi['id'])
+                    if prevyu:
+                        fi['thumbnail'] = base64.b64encode(prevyu).decode('utf-8')
             else:
-                fi['icon'] = self.get_file_icon(fi['type'])
+                fi['icon'] = self.get_file_icon(file_type)
                 fi['size_kb'] = round(fi['size'] / 1024, 1)
 
         dt = datetime.fromisoformat(kopiya.get('timestamp', '').replace('Z', '+00:00'))
@@ -1088,4 +1353,6 @@ class ChatWindow(QWidget):
         self._destroyed = True
         self.avatar_timer.stop()
         self.sync_timer.stop()
+        self.heartbeat_timer.stop()
+        self.status_refresh_timer.stop()
         super().closeEvent(event)

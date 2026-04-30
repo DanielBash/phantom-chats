@@ -267,6 +267,13 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INTEGER PRIMARY KEY,
+                hide_online_status INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
+            )
+        ''')
         conn.commit()
         conn.close()
 
@@ -285,6 +292,12 @@ class Database:
             while True:
                 time.sleep(60)
                 self.cleanup_offline_connections()
+                stale = self.reap_stale_online_users(stale_seconds=120)
+                for row in stale:
+                    try:
+                        broadcast_status(row['login'], row['user_id'], 'offline', row['last_seen'])
+                    except Exception:
+                        pass
 
         thread = threading.Thread(target=status_cleanup_worker, daemon=True)
         thread.start()
@@ -325,6 +338,133 @@ class Database:
         cursor.execute("DELETE FROM active_connections WHERE last_ping < datetime('now', '-5 minutes')")
         conn.commit()
         conn.close()
+
+    def reap_stale_online_users(self, stale_seconds=120):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT s.user_id, s.last_seen, u.login
+            FROM user_status s
+            JOIN users u ON u.user_id = s.user_id
+            WHERE s.status = 'online'
+              AND s.last_seen < datetime('now', ?)
+        ''', (f'-{stale_seconds} seconds',))
+        rows = [dict(r) for r in cursor.fetchall()]
+        if rows:
+            cursor.execute('''
+                UPDATE user_status SET status = 'offline'
+                WHERE status = 'online'
+                  AND last_seen < datetime('now', ?)
+            ''', (f'-{stale_seconds} seconds',))
+            conn.commit()
+        conn.close()
+        return rows
+
+    def get_hide_online(self, user_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT hide_online_status FROM user_preferences WHERE user_id = ?', (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return bool(row[0]) if row else False
+
+    def set_hide_online(self, user_id, hidden):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO user_preferences (user_id, hide_online_status)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET hide_online_status = excluded.hide_online_status
+        ''', (user_id, 1 if hidden else 0))
+        conn.commit()
+        conn.close()
+        return True
+
+    def set_user_online(self, user_id, device_id=None):
+        if self.get_hide_online(user_id):
+            return False
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT status FROM user_status WHERE user_id = ?', (user_id,))
+        row = cursor.fetchone()
+        prev = row[0] if row else None
+        cursor.execute('''
+            INSERT INTO user_status (user_id, status, last_seen, current_device_id)
+            VALUES (?, 'online', CURRENT_TIMESTAMP, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                status = 'online',
+                last_seen = CURRENT_TIMESTAMP,
+                current_device_id = COALESCE(?, user_status.current_device_id)
+        ''', (user_id, device_id, device_id))
+        conn.commit()
+        conn.close()
+        return prev != 'online'
+
+    def set_user_offline(self, user_id):
+        if self.get_hide_online(user_id):
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM user_status WHERE user_id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            return False, None
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT status FROM user_status WHERE user_id = ?', (user_id,))
+        row = cursor.fetchone()
+        prev = row[0] if row else None
+        now_iso = datetime.datetime.now().isoformat(timespec='seconds')
+        cursor.execute('''
+            INSERT INTO user_status (user_id, status, last_seen)
+            VALUES (?, 'offline', CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                status = 'offline',
+                last_seen = CURRENT_TIMESTAMP
+        ''', (user_id,))
+        conn.commit()
+        cursor.execute('SELECT last_seen FROM user_status WHERE user_id = ?', (user_id,))
+        row2 = cursor.fetchone()
+        conn.close()
+        if row2 and row2[0]:
+            now_iso = row2[0]
+        return prev == 'online', now_iso
+
+    def get_status_for_contacts(self, owner_login):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.login, u.user_id, s.status, s.last_seen, p.hide_online_status
+            FROM contacts c
+            JOIN users u ON u.login = c.contact_login
+            LEFT JOIN user_status s ON s.user_id = u.user_id
+            LEFT JOIN user_preferences p ON p.user_id = u.user_id
+            WHERE c.contact_owner = ?
+        ''', (owner_login,))
+        rows = cursor.fetchall()
+        conn.close()
+        result = {}
+        for row in rows:
+            login = row['login']
+            if row['hide_online_status']:
+                result[login] = {'status': 'hidden', 'last_seen': None}
+            elif row['status'] == 'online':
+                result[login] = {'status': 'online', 'last_seen': None}
+            else:
+                result[login] = {'status': 'offline', 'last_seen': row['last_seen']}
+        return result
+
+    def get_followers(self, login):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT u.user_id
+            FROM contacts c
+            JOIN users u ON u.login = c.contact_owner
+            WHERE c.contact_login = ?
+        ''', (login,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [row[0] for row in rows]
 
     def get_login_attempt(self, login, device_id):
         conn = self.get_connection()
@@ -1022,6 +1162,16 @@ def add_event(user_id, event_type, data):
         event_queues[user_id].put((event_type, data))
 
 
+def broadcast_status(login, user_id, status, last_seen_iso):
+    if db.get_hide_online(user_id):
+        return
+    payload = {'login': login, 'status': status, 'last_seen': last_seen_iso}
+    for follower_id in db.get_followers(login):
+        if db.get_hide_online(follower_id):
+            continue
+        add_event(follower_id, 'status_update', payload)
+
+
 def get_event_queue(user_id):
     with event_queues_lock:
         return event_queues.get(user_id)
@@ -1462,8 +1612,8 @@ def opaque_login_failed():
     return jsonify({'success': True})
 
 
-MAX_VIDEO_BYTES = 1024 * 1024  # 1 MB cap for encrypted video uploads
-MAX_FILE_BYTES = 25 * 1024 * 1024  # general per-file cap
+MAX_VIDEO_BYTES = 1024 * 1024
+MAX_FILE_BYTES = 25 * 1024 * 1024
 
 
 @app.route('/api/upload_file', methods=['POST'])
@@ -1941,6 +2091,78 @@ def get_prekey_bundle(user, data):
         'opk': opk_row['public_key'] if opk_row else None,
     }
     return jsonify({'success': True, 'bundle': bundle})
+
+
+@app.route('/api/heartbeat', methods=['POST'])
+@rate_limit
+@login_required
+def heartbeat(user, data):
+    if db.get_hide_online(user['user_id']):
+        return jsonify({'success': True, 'hidden': True})
+    device_id = request.headers.get('X-Device-ID')
+    changed = db.set_user_online(user['user_id'], device_id)
+    if changed:
+        broadcast_status(user['login'], user['user_id'], 'online', None)
+    return jsonify({'success': True})
+
+
+@app.route('/api/set_offline', methods=['POST'])
+@rate_limit
+@login_required
+def set_offline_endpoint(user, data):
+    if db.get_hide_online(user['user_id']):
+        db.set_user_offline(user['user_id'])
+        return jsonify({'success': True, 'hidden': True})
+    changed, last_seen_iso = db.set_user_offline(user['user_id'])
+    if changed:
+        broadcast_status(user['login'], user['user_id'], 'offline', last_seen_iso)
+    return jsonify({'success': True})
+
+
+@app.route('/api/get_contacts_status', methods=['POST'])
+@rate_limit
+@login_required
+def get_contacts_status(user, data):
+    if db.get_hide_online(user['user_id']):
+        contacts = db.get_contacts(user['login'])
+        statuses = {c['login']: {'status': 'hidden', 'last_seen': None} for c in contacts}
+        return jsonify({'success': True, 'statuses': statuses, 'self_hidden': True})
+    statuses = db.get_status_for_contacts(user['login'])
+    return jsonify({'success': True, 'statuses': statuses, 'self_hidden': False})
+
+
+@app.route('/api/save_privacy_preferences', methods=['POST'])
+@rate_limit
+@login_required
+def save_privacy_preferences(user, data):
+    hide = bool(data.get('hide_online_status', False))
+    was_hidden = db.get_hide_online(user['user_id'])
+    db.set_hide_online(user['user_id'], hide)
+    if hide and not was_hidden:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT status, last_seen FROM user_status WHERE user_id = ?', (user['user_id'],))
+        row = cursor.fetchone()
+        prev_status = row[0] if row else None
+        cursor.execute('DELETE FROM user_status WHERE user_id = ?', (user['user_id'],))
+        conn.commit()
+        conn.close()
+        if prev_status == 'online':
+            payload = {'login': user['login'], 'status': 'offline', 'last_seen': None}
+            for follower_id in db.get_followers(user['login']):
+                if not db.get_hide_online(follower_id):
+                    add_event(follower_id, 'status_update', payload)
+    return jsonify({'success': True})
+
+
+@app.route('/api/get_privacy_preferences', methods=['POST'])
+@rate_limit
+@login_required
+def get_privacy_preferences(user, data):
+    return jsonify({
+        'success': True,
+        'hide_online_status': db.get_hide_online(user['user_id'])
+    })
 
 
 @app.route('/api/events')

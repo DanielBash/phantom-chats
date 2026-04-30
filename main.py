@@ -1,6 +1,6 @@
 import PyQt6.QtWebEngineWidgets
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
-from PyQt6.QtCore import QSettings
+from PyQt6.QtCore import QSettings, QEvent, Qt
 from network import make_server_request_async, messenger_api
 from styles import style_input_dialog
 import sys
@@ -154,12 +154,29 @@ class MainWindow(QMainWindow):
         self.save_window_state()
         if self.user_token and self.user_id:
             from network.transport import SyncHTTPRequest
+            try:
+                SyncHTTPRequest.post('set_offline', {
+                    'session_token': self.session_token,
+                    'user_id': self.user_id,
+                    'user_token': self.user_token
+                })
+            except Exception:
+                pass
             SyncHTTPRequest.post('logout_current', {
                 'session_token': self.session_token,
                 'user_id': self.user_id,
                 'user_token': self.user_token
             })
         event.accept()
+
+    def changeEvent(self, event):
+        if event.type() == QEvent.Type.WindowStateChange:
+            if self.user_token and self.user_id:
+                if self.windowState() & Qt.WindowState.WindowMinimized:
+                    messenger_api.set_offline_async()
+                else:
+                    messenger_api.send_heartbeat()
+        super().changeEvent(event)
 
     def _clear_cur_widget(self):
         if self.cur_widget:

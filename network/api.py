@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import base64
+import traceback
 from datetime import datetime, timezone
 from PyQt6.QtCore import QSettings
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -133,12 +134,21 @@ class MessengerAPI:
         resp = self.network_manager.send_sync_request('get_prekey_bundle', {
             'contact_login': contact_login,
         })
-        if not resp or not resp.get('success'):
+        if not resp:
             return None
-        return resp.get('bundle')
+        if not resp.get('success'):
+            err = resp.get('error', 'unknown')
+            return None
+        bundle = resp.get('bundle')
+        return bundle
 
     def send_message(self, token, user_id, receiver_login, text='', file_id=None):
-        if self.session_manager and text:
+        if text:
+            if not self.session_manager:
+                raise SessionError(
+                    'E2EE не инициализирован - сообщение не отправлено. '
+                    'Перелогиньтесь, чтобы восстановить шифрование.'
+                )
             wire = self.session_manager.encrypt_for(receiver_login, text)
             text = json.dumps(wire, separators=(',', ':'))
         client_timestamp = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
@@ -213,7 +223,7 @@ class MessengerAPI:
             data['session_token'] = self.network_manager.session_token
         return self.network_manager.send_sync_request('set_cleanup_interval', data)
 
-    def encrypt_file_data(self, file_data, thumbnail_data, receiver_login=None):
+    def encrypt_file_data(self, file_data, thumbnail_data, receiver_login=None, video_meta=None):
         if not self.session_manager:
             raise SessionError('Session manager not initialised')
         if not receiver_login:
@@ -224,11 +234,17 @@ class MessengerAPI:
         aesgcm = AESGCM(file_key)
         ciphertext = aesgcm.encrypt(nonce_file, file_data, None)
 
-        wrapper = json.dumps({
+        wrapper_fields = {
             'k': base64.b64encode(file_key).decode(),
             'n': base64.b64encode(nonce_file).decode(),
             'h': hashlib.sha256(file_data).hexdigest(),
-        }, separators=(',', ':')).encode('utf-8')
+        }
+        if video_meta:
+            wrapper_fields['vid'] = True
+            duration_ms = int(video_meta.get('duration_ms') or 0)
+            if duration_ms > 0:
+                wrapper_fields['dur'] = duration_ms
+        wrapper = json.dumps(wrapper_fields, separators=(',', ':')).encode('utf-8')
 
         wire = self.session_manager.encrypt_for(receiver_login, wrapper)
 
@@ -246,7 +262,7 @@ class MessengerAPI:
 
         return result
 
-    def decrypt_file_data(self, ciphertext, nonce, encrypted_key, sender_login=None):
+    def decrypt_file_data(self, ciphertext, nonce, encrypted_key, sender_login=None, return_meta=False):
         if not self.session_manager:
             raise SessionError('Session manager not initialised')
         if not sender_login:
@@ -257,10 +273,76 @@ class MessengerAPI:
         wrapper = json.loads(wrapper_bytes.decode('utf-8'))
         file_key = base64.b64decode(wrapper['k'])
         plaintext = AESGCM(file_key).decrypt(nonce, ciphertext, None)
-        # Integrity check via end-to-end SHA-256.
         if hashlib.sha256(plaintext).hexdigest() != wrapper.get('h'):
             raise SessionError('file integrity check failed')
+        if return_meta:
+            meta = {}
+            if wrapper.get('vid'):
+                meta['is_video'] = True
+                if 'dur' in wrapper:
+                    meta['duration_ms'] = int(wrapper['dur'])
+            return plaintext, meta
         return plaintext
+
+    def decrypt_file_thumbnail(self, encrypted_thumb, nonce_thumb, encrypted_key, sender_login):
+        if not self.session_manager:
+            raise SessionError('Session manager not initialised')
+        wire = json.loads(encrypted_key)
+        wrapper_bytes = self.session_manager.decrypt_from(sender_login, wire)
+        wrapper = json.loads(wrapper_bytes.decode('utf-8'))
+        file_key = base64.b64decode(wrapper['k'])
+        return AESGCM(file_key).decrypt(nonce_thumb, encrypted_thumb, None)
+
+    def peek_file_meta(self, encrypted_key, sender_login):
+        if not self.session_manager:
+            raise SessionError('Session manager not initialised')
+        wire = json.loads(encrypted_key)
+        wrapper_bytes = self.session_manager.decrypt_from(sender_login, wire)
+        wrapper = json.loads(wrapper_bytes.decode('utf-8'))
+        meta = {}
+        if wrapper.get('vid'):
+            meta['is_video'] = True
+            if 'dur' in wrapper:
+                meta['duration_ms'] = int(wrapper['dur'])
+        return meta
+
+    def send_heartbeat(self, callback=None):
+        if callback is None:
+            callback = lambda x: None
+        make_server_request_async('heartbeat', {}, callback)
+
+    def set_offline_async(self, callback=None):
+        if callback is None:
+            callback = lambda x: None
+        make_server_request_async('set_offline', {}, callback)
+
+    def set_offline_sync(self):
+        data = {}
+        if self.network_manager.session_token:
+            data['session_token'] = self.network_manager.session_token
+        if self.network_manager.user_token:
+            data['user_token'] = self.network_manager.user_token
+        if self.network_manager.user_id:
+            data['user_id'] = self.network_manager.user_id
+        from network.transport import SyncHTTPRequest
+        return SyncHTTPRequest.post('set_offline', data)
+
+    def get_contacts_status(self, callback=None):
+        if callback is None:
+            callback = lambda x: None
+        make_server_request_async('get_contacts_status', {}, callback)
+
+    def save_privacy_preferences(self, hide_online_status, callback=None):
+        if callback is None:
+            callback = lambda x: None
+        make_server_request_async('save_privacy_preferences',
+                                  {'hide_online_status': bool(hide_online_status)},
+                                  callback)
+
+    def get_privacy_preferences(self, callback=None):
+        if callback is None:
+            callback = lambda x: None
+        make_server_request_async('get_privacy_preferences', {}, callback)
 
     def upload_file(self, token, user_id, file_data, file_name, file_type,
                     is_image_only=False, encrypted_key=None, nonce_file=None,
@@ -399,19 +481,12 @@ class MessengerAPI:
     def _handle_register_upload(self, login, username, password, master_key, callback, response):
         if response and response.get('success'):
             user_id = response['user_id']
-            # Stamp the login *before* init_e2ee so the prekey store is
-            # saved under DATA_PATH/crypto/<login>/ instead of /unknown/.
-            # (The server-publish calls inside init_e2ee will still fail
-            # with 401 because we have no session token yet — they're
-            # redone at login time, when credentials are present.)
             self.user_login = login
             try:
                 self.init_e2ee(master_key)
             except Exception as exc:
-                # Don't strand the UI in a loading state if a publish
-                # endpoint is missing/misbehaving — registration itself
-                # already succeeded server-side.
-                print(f'init_e2ee failed during register: {exc}')
+                print(f'init_e2ee failed register: {type(exc).__name__}: {exc}')
+                traceback.print_exc()
             callback(response)
         else:
             callback(response)
@@ -465,9 +540,8 @@ class MessengerAPI:
                     master_key = decrypt_master_key(encrypted, password)
                     self.init_e2ee(master_key)
                 except Exception as exc:
-                    # Do NOT propagate — UI must always get the callback,
-                    # otherwise the loading spinner becomes terminal.
-                    print(f'init_e2ee failed during login: {exc}')
+                    print(f'init_e2ee failed login: {type(exc).__name__}: {exc}')
+                    traceback.print_exc()
             self.network_manager.start_event_listener()
             self.login_in_progress = False
             callback(response)

@@ -8,6 +8,7 @@ class NetworkManager(QObject):
     message_received = pyqtSignal(dict)
     connection_status_changed = pyqtSignal(bool)
     avatar_updated = pyqtSignal(dict)
+    contact_status_changed = pyqtSignal(dict)
 
     def __init__(self, host='155.212.132.185', port=6666):
         super().__init__()
@@ -38,6 +39,7 @@ class NetworkManager(QObject):
         self.sse_listener = SSEListener(self.session_token, self.user_id, self.user_login)
         self.sse_listener.message_received.connect(self.message_received)
         self.sse_listener.avatar_updated.connect(self.avatar_updated)
+        self.sse_listener.status_update.connect(self.contact_status_changed)
         self.sse_listener.connection_status.connect(self.connection_status_changed)
         self.sse_listener.start()
 
