@@ -1612,8 +1612,8 @@ def opaque_login_failed():
     return jsonify({'success': True})
 
 
-MAX_VIDEO_BYTES = 1024 * 1024  # 1 MB cap for encrypted video uploads
-MAX_FILE_BYTES = 25 * 1024 * 1024  # general per-file cap
+MAX_VIDEO_BYTES = 1024 * 1024
+MAX_FILE_BYTES = 25 * 1024 * 1024
 
 
 @app.route('/api/upload_file', methods=['POST'])
@@ -2139,7 +2139,6 @@ def save_privacy_preferences(user, data):
     was_hidden = db.get_hide_online(user['user_id'])
     db.set_hide_online(user['user_id'], hide)
     if hide and not was_hidden:
-        # On switching to hidden: drop status row + tell previous followers we went offline
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT status, last_seen FROM user_status WHERE user_id = ?', (user['user_id'],))

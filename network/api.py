@@ -272,7 +272,6 @@ class MessengerAPI:
         wrapper = json.loads(wrapper_bytes.decode('utf-8'))
         file_key = base64.b64decode(wrapper['k'])
         plaintext = AESGCM(file_key).decrypt(nonce, ciphertext, None)
-        # Integrity check via end-to-end SHA-256.
         if hashlib.sha256(plaintext).hexdigest() != wrapper.get('h'):
             raise SessionError('file integrity check failed')
         if return_meta:
@@ -294,8 +293,6 @@ class MessengerAPI:
         return AESGCM(file_key).decrypt(nonce_thumb, encrypted_thumb, None)
 
     def peek_file_meta(self, encrypted_key, sender_login):
-        # Decrypt only the wrapper to surface video metadata (duration, is_video)
-        # before downloading file payload.
         if not self.session_manager:
             raise SessionError('Session manager not initialised')
         wire = json.loads(encrypted_key)
@@ -483,18 +480,10 @@ class MessengerAPI:
     def _handle_register_upload(self, login, username, password, master_key, callback, response):
         if response and response.get('success'):
             user_id = response['user_id']
-            # Stamp the login *before* init_e2ee so the prekey store is
-            # saved under DATA_PATH/crypto/<login>/ instead of /unknown/.
-            # (The server-publish calls inside init_e2ee will still fail
-            # with 401 because we have no session token yet — they're
-            # redone at login time, when credentials are present.)
             self.user_login = login
             try:
                 self.init_e2ee(master_key)
             except Exception as exc:
-                # Don't strand the UI in a loading state if a publish
-                # endpoint is missing/misbehaving — registration itself
-                # already succeeded server-side.
                 print(f'init_e2ee failed during register: {exc}')
             callback(response)
         else:
@@ -549,8 +538,6 @@ class MessengerAPI:
                     master_key = decrypt_master_key(encrypted, password)
                     self.init_e2ee(master_key)
                 except Exception as exc:
-                    # Do NOT propagate — UI must always get the callback,
-                    # otherwise the loading spinner becomes terminal.
                     print(f'init_e2ee failed during login: {exc}')
             self.network_manager.start_event_listener()
             self.login_in_progress = False

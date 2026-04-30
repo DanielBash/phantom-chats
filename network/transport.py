@@ -135,9 +135,6 @@ class AsyncHTTPRequest(QObject):
             self._reply.deleteLater()
             if self in AsyncHTTPRequest._active_requests:
                 AsyncHTTPRequest._active_requests.remove(self)
-
-        # Last-resort wrap so a buggy callback never freezes the UI in a
-        # half-finished state — the user has at least *something* in hand.
         try:
             self._callback(result)
         except Exception as cb_exc:
@@ -186,9 +183,6 @@ class SyncHTTPRequest:
                         'error': reply.errorString() or 'network error',
                         'status': status_code}
 
-            # Empty body — common when an endpoint hasn't been deployed yet
-            # or returns 204. Don't try to json.loads "" — it raises and
-            # would deadlock callers waiting on a callback.
             if not response_data:
                 return {'success': False,
                         'error': f'empty response (HTTP {status_code})',
@@ -209,7 +203,6 @@ class SyncHTTPRequest:
                 return {'success': False,
                         'error': f'HTTPS ошибка {status_code}',
                         'status': status_code}
-
             return parsed
-        except Exception as exc:  # last-resort: never propagate
+        except Exception as exc:
             return {'success': False, 'error': f'sync request failed: {exc}'}

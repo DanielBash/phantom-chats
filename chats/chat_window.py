@@ -474,8 +474,8 @@ class ChatWindow(QWidget):
         if not put_fayla:
             return
 
-        if os.path.getsize(put_fayla) > 10 * 1024 * 1024:
-            self._safe_run_js('showToast("Файл слишком большой (максимум 10MB)", true);')
+        if os.path.getsize(put_fayla) > 1000 * 1024 * 1024:
+            self._safe_run_js('showToast("Файл слишком большой (максимум 1000MB)", true);')
             return
 
         imya_fayla = os.path.basename(put_fayla)
@@ -492,8 +492,6 @@ class ChatWindow(QWidget):
         with open(put_fayla, 'rb') as f:
             dannyye = f.read()
 
-        # For images and videos we want inline display in the chat — same
-        # rendering path. The is_image_only flag drives that on the JS side.
         inline_render = tolko_kartinka or is_video
 
         video_meta = None
@@ -622,9 +620,6 @@ class ChatWindow(QWidget):
         }, handle_file_otvet)
 
     def open_video(self, file_id, file_info):
-        # Pull the encrypted payload, decrypt locally, then hand the JS layer
-        # a base64 data URL so the HTML5 <video> element can stream it without
-        # any plaintext ever touching disk.
         sender_login = file_info.get('sender_login') or ''
         file_type = file_info.get('type') or 'video/mp4'
 
@@ -662,8 +657,6 @@ class ChatWindow(QWidget):
                 self._safe_run_js('showToast("Ошибка расшифровки видео", true);')
                 return
             if messenger_api.file_cache:
-                # Persist full payload so re-opens are instant. Thumbnail
-                # already cached separately on first preview.
                 existing_info = messenger_api.file_cache.get_file_info(file_id)
                 existing_thumb = (
                     messenger_api.file_cache.get_thumbnail_data(file_id)
@@ -1092,9 +1085,6 @@ class ChatWindow(QWidget):
         }, handle_otvet)
 
     def _load_video_thumbnail(self, file_id, message_id, contact_user_id, file_info):
-        # Pull only thumbnail bytes from the server, decrypt with the
-        # ratchet wrapper key, and cache for fast re-render. Avoids streaming
-        # the entire video file just to show a chat preview.
         sender_login = file_info.get('sender_login') or ''
         encrypted_key = file_info.get('encrypted_key')
         nonce_thumb_b64 = file_info.get('nonce_thumbnail')
@@ -1116,9 +1106,6 @@ class ChatWindow(QWidget):
             except Exception:
                 return
             if messenger_api.file_cache:
-                # Don't have full file payload yet — only persist thumbnail.
-                # Reuse save_file with empty placeholder so cache layout
-                # stays consistent.
                 info = messenger_api.file_cache.get_file_info(file_id)
                 if not info:
                     messenger_api.file_cache.save_file(
@@ -1260,9 +1247,6 @@ class ChatWindow(QWidget):
             is_video_file = file_type.startswith('video/')
             fi['is_video'] = is_video_file
 
-            # If we already peeked the video metadata earlier, surface duration
-            # in the file_info so JS can render the overlay without an extra
-            # round-trip.
             if is_video_file and fi.get('encrypted_key') and messenger_api.session_manager:
                 cached_meta = self._video_meta_cache.get(fi['id'])
                 if cached_meta is None:

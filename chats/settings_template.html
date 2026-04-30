@@ -1038,14 +1038,11 @@
         }
         function closeConfirmModal() { closeModal('confirmModal'); confirmAction = null; }
         function executeConfirmAction() { if (confirmAction) confirmAction(); closeConfirmModal(); }
-
-        // Apply preferences pushed from Python
         window.applyPrivacyPreferences = function(prefs) {
             if (!prefs) return;
             const t = document.getElementById('toggleHideOnline');
             if (t) t.checked = !!prefs.hide_online_status;
         };
-
         window.applyLocalPreferences = function(prefs) {
             if (!prefs) return;
             function setToggle(id, v, def=false) {
