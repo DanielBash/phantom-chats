@@ -8,6 +8,7 @@ class SSEListener(QObject):
     # -- слушатель событий от сервера
     message_received = pyqtSignal(dict)
     avatar_updated = pyqtSignal(dict)
+    status_update = pyqtSignal(dict)
     connection_status = pyqtSignal(bool)
 
     def __init__(self, session_token, user_id, user_login):
@@ -68,6 +69,8 @@ class SSEListener(QObject):
                 self.message_received.emit(json_data)
             elif event_type == 'avatar_updated':
                 self.avatar_updated.emit(json_data)
+            elif event_type == 'status_update':
+                self.status_update.emit(json_data)
 
     def _on_finished(self):
         if self.active:

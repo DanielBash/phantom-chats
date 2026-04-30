@@ -121,16 +121,47 @@
             background: #f0f4ff;
             border-left: 4px solid #667eea;
         }
+        .contact-avatar-wrapper {
+            position: relative;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
         .contact-avatar {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            margin-right: 12px;
             object-fit: cover;
             border: 2px solid #e0e0e0;
+            display: block;
+        }
+        .presence-dot {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            border: 2px solid #ffffff;
+            box-sizing: border-box;
+            display: none;
+        }
+        .presence-dot.online {
+            display: block;
+        }
+        .chat-header-avatar-wrapper {
+            position: relative;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .chat-header-avatar-wrapper .presence-dot {
+            width: 14px;
+            height: 14px;
+            border-width: 2px;
         }
         .contact-info {
             flex: 1;
+            min-width: 0;
         }
         .contact-name {
             font-weight: 600;
@@ -189,12 +220,13 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            margin-right: 15px;
             object-fit: cover;
             border: 2px solid #e0e0e0;
+            display: block;
         }
         .chat-header-info {
             flex: 1;
+            min-width: 0;
         }
         .chat-header-name {
             font-size: 18px;
@@ -203,7 +235,17 @@
         }
         .chat-header-status {
             font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+            display: none;
+        }
+        .chat-header-status.online {
             color: #28a745;
+            display: block;
+        }
+        .chat-header-status.offline {
+            color: #888;
+            display: block;
         }
         .chat-menu-btn {
             width: 40px;
@@ -315,6 +357,47 @@
         }
         .message-image:hover {
             transform: scale(1.02);
+        }
+        .video-frame {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            border-radius: 6px;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        .video-frame .message-image {
+            border-radius: 6px;
+        }
+        .video-play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.55);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            pointer-events: none;
+            backdrop-filter: blur(2px);
+        }
+        .video-duration-badge {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 10px;
+            pointer-events: none;
+            letter-spacing: 0.4px;
         }
         .file-attachment {
             margin-top: 8px;
@@ -752,6 +835,13 @@
         .fullscreen-image.zoomed {
             cursor: zoom-out;
         }
+        .fullscreen-video {
+            max-width: 95%;
+            max-height: 95%;
+            outline: none;
+            background: black;
+            animation: fadeIn 0.3s ease;
+        }
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -829,9 +919,13 @@
     <div class="right-panel" id="rightPanel">
         <div class="chat-header">
             <span class="back-to-contacts" onclick="toggleContacts()" id="backToContacts">←</span>
-            <img src="" alt="Avatar" class="chat-header-avatar" id="chatAvatar">
+            <div class="chat-header-avatar-wrapper">
+                <img src="" alt="Avatar" class="chat-header-avatar" id="chatAvatar">
+                <span class="presence-dot" id="chatHeaderPresence"></span>
+            </div>
             <div class="chat-header-info">
                 <div class="chat-header-name" id="chatName">Выберите чат</div>
+                <div class="chat-header-status" id="chatHeaderStatus"></div>
             </div>
             <div class="chat-menu">
                 <button class="chat-menu-btn" onclick="toggleChatMenu()">⋮</button>
@@ -856,6 +950,9 @@
                         </div>
                         <div class="attach-item" onclick="attachFile(true)">
                             <span>🖼️</span> Отправить фото
+                        </div>
+                        <div class="attach-item" onclick="attachVideo()">
+                            <span>🎬</span> Отправить видео
                         </div>
                     </div>
                 </div>
@@ -885,6 +982,7 @@
         <button class="fullscreen-download" onclick="downloadFullscreenImage()">💾</button>
     </div>
     <img class="fullscreen-image" id="fullscreenImage" src="" alt="" ondblclick="toggleZoom()">
+    <video class="fullscreen-video" id="fullscreenVideo" controls playsinline style="display:none;"></video>
 </div>
 <div class="modal" id="addContactModal">
     <div class="modal-content">
@@ -930,16 +1028,62 @@
 <script>
     let currentUser = '';
     let contacts = {};
+    let contactStatuses = {};
     let currentContact = null;
     let messages = [];
     let isMobile = window.innerWidth <= 768;
     let attachMenuOpen = false;
     let currentFullscreenImageData = null;
     let currentFullscreenFileName = '';
+    let currentFullscreenIsVideo = false;
+    let currentFullscreenVideoMime = 'video/mp4';
     let fullscreenZoomLevel = 1;
     const ZOOM_STEP = 0.25;
     const MAX_ZOOM = 3;
     const MIN_ZOOM = 1;
+
+    function formatLastSeen(iso) {
+        if (!iso) return '';
+        let isoFix = iso;
+        if (isoFix.indexOf('T') === -1) {
+            isoFix = isoFix.replace(' ', 'T');
+        }
+        if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(isoFix)) {
+            isoFix = isoFix + 'Z';
+        }
+        const dt = new Date(isoFix);
+        if (isNaN(dt.getTime())) return '';
+        const now = new Date();
+        const sameDay = dt.toDateString() === now.toDateString();
+        const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+        const isYesterday = dt.toDateString() === yesterday.toDateString();
+        const pad = (n) => String(n).padStart(2, '0');
+        const time = pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+        if (sameDay) return 'был(а) сегодня в ' + time;
+        if (isYesterday) return 'был(а) вчера в ' + time;
+        const sameYear = dt.getFullYear() === now.getFullYear();
+        const date = pad(dt.getDate()) + '.' + pad(dt.getMonth() + 1) +
+            (sameYear ? '' : '.' + dt.getFullYear());
+        return 'был(а) ' + date + ' в ' + time;
+    }
+
+    function statusToText(statusObj) {
+        if (!statusObj) return '';
+        if (statusObj.status === 'hidden') return '';
+        if (statusObj.status === 'online') return 'в сети';
+        return formatLastSeen(statusObj.last_seen);
+    }
+
+    function formatVideoDuration(ms) {
+        if (!ms || ms < 0) return '';
+        const totalSec = Math.floor(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+        return m + ':' + pad(s);
+    }
 
     new QWebChannel(qt.webChannelTransport, function(channel) {
         window.qt = channel.objects.qt;
@@ -1068,16 +1212,25 @@
             item.className = 'contact-item' + (currentContact && currentContact.login === contact.login ? ' selected' : '');
             item.setAttribute('data-login', contact.login);
             item.onclick = () => selectContact(contact.login);
+            const avatarWrap = document.createElement('div');
+            avatarWrap.className = 'contact-avatar-wrapper';
             const avatar = document.createElement('img');
             avatar.className = 'contact-avatar';
             avatar.src = contact.avatar || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 40 40\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'20\' fill=\'%23cccccc\'/%3E%3Ctext x=\'20\' y=\'25\' font-size=\'20\' text-anchor=\'middle\' fill=\'%23999999\'%3E👤%3C/text%3E%3C/svg%3E';
+            const dot = document.createElement('span');
+            dot.className = 'presence-dot';
+            dot.setAttribute('data-presence-for', contact.login);
+            const st = contactStatuses[contact.login];
+            if (st && st.status === 'online') dot.classList.add('online');
+            avatarWrap.appendChild(avatar);
+            avatarWrap.appendChild(dot);
             const info = document.createElement('div');
             info.className = 'contact-info';
             const name = document.createElement('div');
             name.className = 'contact-name';
             name.textContent = contact.display_name || contact.username || contact.login;
             info.appendChild(name);
-            item.appendChild(avatar);
+            item.appendChild(avatarWrap);
             item.appendChild(info);
             list.appendChild(item);
         });
@@ -1090,6 +1243,58 @@
             list.appendChild(empty);
         }
     }
+
+    function applyPresenceDot(login) {
+        const dot = document.querySelector(`.presence-dot[data-presence-for="${login}"]`);
+        if (!dot) return;
+        const st = contactStatuses[login];
+        if (st && st.status === 'online') {
+            dot.classList.add('online');
+        } else {
+            dot.classList.remove('online');
+        }
+    }
+
+    function applyChatHeaderStatus(login) {
+        if (!currentContact || currentContact.login !== login) return;
+        const dot = document.getElementById('chatHeaderPresence');
+        const txt = document.getElementById('chatHeaderStatus');
+        const st = contactStatuses[login];
+        if (!st || st.status === 'hidden') {
+            if (dot) dot.classList.remove('online');
+            if (txt) { txt.className = 'chat-header-status'; txt.textContent = ''; }
+            return;
+        }
+        if (st.status === 'online') {
+            if (dot) dot.classList.add('online');
+            if (txt) { txt.className = 'chat-header-status online'; txt.textContent = 'в сети'; }
+        } else {
+            if (dot) dot.classList.remove('online');
+            if (txt) {
+                txt.className = 'chat-header-status offline';
+                txt.textContent = statusToText(st) || 'был(а) недавно';
+            }
+        }
+    }
+
+    window.setContactStatuses = function(map) {
+        contactStatuses = map || {};
+        Object.keys(contactStatuses).forEach(applyPresenceDot);
+        if (currentContact) applyChatHeaderStatus(currentContact.login);
+    };
+
+    window.updateContactStatus = function(login, statusObj) {
+        if (!login) return;
+        contactStatuses[login] = statusObj || {};
+        applyPresenceDot(login);
+        applyChatHeaderStatus(login);
+    };
+
+    window.updateChatHeaderStatus = function(login, statusObj) {
+        if (!login) return;
+        if (statusObj) contactStatuses[login] = statusObj;
+        applyChatHeaderStatus(login);
+    };
 
     function selectContact(login) {
         currentContact = contacts[login];
@@ -1108,6 +1313,7 @@
         if (isMobile) {
             document.getElementById('leftPanel').classList.remove('show');
         }
+        applyChatHeaderStatus(login);
         if (window.qt && window.qt.loadMessages) {
             window.qt.loadMessages(login);
         }
@@ -1142,8 +1348,52 @@
             }
             if (hasFile) {
                 const fileInfo = msg.file_info;
-                const isImage = fileInfo.type && fileInfo.type.startsWith('image/') && msg.is_image_only === true;
-                if (isImage) {
+                const ftype = fileInfo.type || '';
+                const isVideo = (fileInfo.is_video === true) || ftype.startsWith('video/');
+                const isImage = ftype.startsWith('image/') && !isVideo && msg.is_image_only === true;
+                if (isVideo && msg.is_image_only === true) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'video-frame';
+                    wrap.setAttribute('data-message-id', msg.id);
+                    const img = document.createElement('img');
+                    img.className = 'message-image';
+                    img.style.opacity = '0';
+                    img.style.transition = 'opacity 0.2s';
+                    const loadPromise = new Promise((resolve) => {
+                        img.onload = () => { img.style.opacity = '1'; resolve(); };
+                        img.onerror = () => { img.style.opacity = '0.5'; resolve(); };
+                    });
+                    imageLoadPromises.push(loadPromise);
+                    if (fileInfo.thumbnail) {
+                        img.src = 'data:image/jpeg;base64,' + fileInfo.thumbnail;
+                    } else {
+                        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                        img.style.opacity = '0.5';
+                    }
+                    img.setAttribute('data-file-id', fileInfo.id);
+                    img.setAttribute('data-file-name', fileInfo.name || 'video.mp4');
+                    img.setAttribute('data-file-type', ftype || 'video/mp4');
+                    img.setAttribute('data-file-size', fileInfo.size || 0);
+                    img.setAttribute('data-is-encrypted', fileInfo.is_encrypted ? '1' : '0');
+                    if (fileInfo.encrypted_key) img.setAttribute('data-encrypted-key', fileInfo.encrypted_key);
+                    if (fileInfo.nonce_file) img.setAttribute('data-nonce-file', fileInfo.nonce_file);
+                    if (fileInfo.sender_login) img.setAttribute('data-sender-login', fileInfo.sender_login);
+                    wrap.appendChild(img);
+                    const overlay = document.createElement('div');
+                    overlay.className = 'video-play-overlay';
+                    overlay.textContent = '▶';
+                    wrap.appendChild(overlay);
+                    const durMs = parseInt(fileInfo.duration_ms || 0, 10);
+                    const durText = formatVideoDuration(durMs);
+                    if (durText) {
+                        const badge = document.createElement('div');
+                        badge.className = 'video-duration-badge';
+                        badge.textContent = durText;
+                        wrap.appendChild(badge);
+                    }
+                    wrap.onclick = () => openVideoFromInfo(fileInfo);
+                    messageDiv.appendChild(wrap);
+                } else if (isImage) {
                     const img = document.createElement('img');
                     img.className = 'message-image';
                     img.style.opacity = '0';
@@ -1328,6 +1578,23 @@
         attachMenuOpen = false;
     }
 
+    function attachVideo() {
+        if (!currentContact) {
+            showToast('Сначала выберите контакт', true);
+            return;
+        }
+        const text = document.getElementById('messageInput').value;
+        if (window.qt && window.qt.attachFile) {
+            window.qt.attachFile(JSON.stringify({
+                text: text,
+                isImageOnly: false,
+                isVideoOnly: true
+            }));
+        }
+        document.getElementById('attachMenu').classList.remove('show');
+        attachMenuOpen = false;
+    }
+
     function downloadFile(element) {
         if (window.qt && window.qt.downloadFile) {
             const fileInfo = {
@@ -1347,6 +1614,13 @@
     function openFullscreen(imgElement) {
         const viewer = document.getElementById('fullscreenViewer');
         const fullscreenImg = document.getElementById('fullscreenImage');
+        const fullscreenVid = document.getElementById('fullscreenVideo');
+        fullscreenVid.style.display = 'none';
+        try { fullscreenVid.pause(); } catch (e) {}
+        fullscreenVid.removeAttribute('src');
+        fullscreenVid.load();
+        fullscreenImg.style.display = '';
+        currentFullscreenIsVideo = false;
         currentFullscreenImageData = imgElement.dataset.fullData || imgElement.src.replace('data:image/jpeg;base64,', '');
         currentFullscreenFileName = imgElement.dataset.fileName || 'image.jpg';
         if (imgElement.dataset.fullData) {
@@ -1361,14 +1635,56 @@
         fullscreenImg.classList.remove('zoomed');
     }
 
+    function openVideoFromInfo(fileInfo) {
+        if (!window.qt || !window.qt.openVideo) return;
+        try { window.qt.openVideo(parseInt(fileInfo.id), JSON.stringify({
+            id: parseInt(fileInfo.id),
+            name: fileInfo.name || 'video.mp4',
+            type: fileInfo.type || 'video/mp4',
+            size: parseInt(fileInfo.size || 0, 10),
+            is_encrypted: !!fileInfo.is_encrypted,
+            encrypted_key: fileInfo.encrypted_key || null,
+            nonce_file: fileInfo.nonce_file || null,
+            sender_login: fileInfo.sender_login || null,
+            duration_ms: parseInt(fileInfo.duration_ms || 0, 10)
+        })); } catch (e) {}
+    }
+
+    window.showVideoPlayer = function(dataUrl, fileName, fileId) {
+        const viewer = document.getElementById('fullscreenViewer');
+        const fullscreenImg = document.getElementById('fullscreenImage');
+        const fullscreenVid = document.getElementById('fullscreenVideo');
+        currentFullscreenIsVideo = true;
+        currentFullscreenFileName = fileName || 'video.mp4';
+        fullscreenImg.style.display = 'none';
+        fullscreenImg.removeAttribute('src');
+        fullscreenVid.style.display = '';
+        fullscreenVid.src = dataUrl;
+        fullscreenVid.load();
+        document.body.classList.add('no-zoom');
+        viewer.classList.add('active');
+        try { fullscreenVid.play().catch(() => {}); } catch (e) {}
+    };
+
     function closeFullscreen() {
         const viewer = document.getElementById('fullscreenViewer');
+        const fullscreenVid = document.getElementById('fullscreenVideo');
         document.body.classList.remove('no-zoom');
         viewer.classList.remove('active');
         fullscreenZoomLevel = 1;
+        if (currentFullscreenIsVideo) {
+            try { fullscreenVid.pause(); } catch (e) {}
+            fullscreenVid.removeAttribute('src');
+            fullscreenVid.load();
+            currentFullscreenIsVideo = false;
+        }
     }
 
     function downloadFullscreenImage() {
+        if (currentFullscreenIsVideo) {
+            showToast('Сохранение видео из плеера пока не поддерживается. Используйте загрузку файла.');
+            return;
+        }
         if (!currentFullscreenImageData || !currentFullscreenFileName) return;
         if (window.qt && window.qt.saveFullscreenImage) {
             window.qt.saveFullscreenImage(currentFullscreenImageData, currentFullscreenFileName);

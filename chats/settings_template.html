@@ -29,300 +29,266 @@
         }
 
         .settings-container {
-            max-width: 800px;
+            max-width: 980px;
             width: 100%;
+            min-height: 80vh;
             background: #ffffff;
             border-radius: 30px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
-            text-align: center;
+            padding: 24px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
         }
 
-        .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 10px; }
-        .header p { opacity: 0.9; font-size: 14px; }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header p { opacity: 0.85; font-size: 13px; margin-top: 4px; }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .header-btn:hover { background: rgba(255,255,255,0.3); }
+        .header-btn.danger { background: rgba(220,53,69,0.85); }
+        .header-btn.danger:hover { background: rgba(220,53,69,1); }
+
+        .body-row {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .sidebar {
+            width: 260px;
+            border-right: 1px solid #e9ecef;
+            background: #f8f9fb;
+            padding: 18px 12px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            margin: 12px 14px 6px 14px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            cursor: pointer;
+            color: #2c3e50;
+            font-size: 14px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+            user-select: none;
+        }
+        .menu-item:hover { background: #eef0fb; }
+        .menu-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.3);
+        }
+        .menu-icon { font-size: 18px; }
 
         .content {
-            padding: 30px;
-            max-height: calc(100vh - 200px);
+            flex: 1;
+            padding: 30px 36px;
             overflow-y: auto;
+        }
+
+        .pane { display: none; }
+        .pane.active { display: block; animation: fadeIn 0.2s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pane-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        .pane-subtitle {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 24px;
         }
 
         .avatar-section {
             display: flex;
             align-items: center;
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: 24px;
+            margin-bottom: 26px;
             padding: 20px;
             background: #f8f9fa;
-            border-radius: 20px;
+            border-radius: 18px;
         }
-
         .avatar-wrapper { position: relative; }
 
         .avatar {
-            width: 140px;
-            height: 140px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
             object-fit: cover;
             border: 4px solid white;
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            transition: box-shadow 0.15s ease;
         }
+        .avatar-label { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
+        .avatar-hint { font-size: 12px; color: #6c757d; margin-bottom: 12px; }
 
-        .avatar:hover {
-            box-shadow: 0 14px 40px rgba(102, 126, 234, 0.45);
+        .card {
+            background: #f8f9fa;
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 18px;
         }
-
-        .avatar-label { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 10px; }
-
-        .avatar-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
+        .card-title {
             font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: box-shadow 0.15s ease;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 14px;
         }
 
-        .avatar-btn:hover {
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.45);
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid #ececec;
         }
-
-        .section { margin-bottom: 25px; }
-
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #667eea;
+        .row:last-child { border-bottom: none; }
+        .row-text { flex: 1; min-width: 0; }
+        .row-label {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        .row-desc {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 2px;
         }
 
         .input-group {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             flex-wrap: wrap;
         }
 
         .input-field {
             flex: 1;
             min-width: 200px;
-            padding: 12px 15px;
+            padding: 11px 15px;
             border: 2px solid #e0e0e0;
-            border-radius: 25px;
+            border-radius: 22px;
             font-size: 14px;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
             background: white;
         }
-
         .input-field:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .input-field::placeholder { color: #999; }
-
         .action-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 25px;
-            font-size: 14px;
+            padding: 11px 22px;
+            border-radius: 22px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: box-shadow 0.15s ease;
             white-space: nowrap;
         }
-
-        .action-btn:hover {
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .session-buttons {
-            display: flex;
-            gap: 15px;
-            margin: 25px 0;
-        }
-
-        .session-btn {
-            flex: 1;
+        .action-btn:hover { box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .action-btn.outline {
             background: white;
             color: #667eea;
             border: 2px solid #667eea;
-            padding: 12px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
         }
-
-        .session-btn:hover {
-            background: #667eea;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .back-btn {
-            flex: 1;
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .back-btn:hover {
-            background: #218838;
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
-        }
-
-        .logout-btn {
-            flex: 1;
+        .action-btn.outline:hover { background: #f0f4ff; }
+        .action-btn.danger {
             background: #dc3545;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: 600;
+        }
+        .action-btn.danger:hover {
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        /* Toggle switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
             cursor: pointer;
-            transition: background-color 0.15s ease, box-shadow 0.15s ease;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: 0.2s;
+            border-radius: 26px;
         }
-
-        .logout-btn:hover {
-            background: #c82333;
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        .slider::before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.2s;
+            border-radius: 50%;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+        .switch input:checked + .slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
+        .switch input:checked + .slider::before { transform: translateX(20px); }
 
-        .modal.active { display: flex; }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 600px;
-            width: 90%;
-            transition: max-height 0.3s ease;
-            overflow: visible;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h2 { color: #333; font-size: 20px; }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-            transition: color 0.15s ease;
-        }
-
-        .close-btn:hover { color: #333; }
-
-        .session-list {
-            list-style: none;
-            margin-bottom: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .session-item {
-            padding: 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: background-color 0.15s ease, border-color 0.15s ease;
-            background: white;
-        }
-
-        .session-item:hover { background: #f5f5f5; border-color: #667eea; }
-        .session-item.selected { border: 3px solid #667eea; background: #f0f4ff; }
-        .session-item.current { background: #28a745; color: white; border-color: #28a745; }
-        .session-item.current:hover { background: #34ce57; }
-        .session-item.active { background: #667eea; color: white; border-color: #667eea; }
-        .session-item.active:hover { background: #7a8ff5; }
-        .session-item.inactive { background: #f0f0f0; color: #999; border-color: #dddddd; opacity: 0.7; }
-        .session-item.inactive:hover { background: #e0e0e0; color: #666; }
-
-        .session-id { font-weight: 600; margin-bottom: 5px; }
-        .session-details { font-size: 12px; color: inherit; opacity: 0.8; }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .modal-btn {
-            flex: 1;
-            min-width: 150px;
-            padding: 10px;
-            border: none;
-            border-radius: 25px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .modal-btn.primary { background: #667eea; color: white; }
-        .modal-btn.primary:hover { background: #5a6fd6; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
-        .modal-btn.danger { background: #dc3545; color: white; }
-        .modal-btn.danger:hover { background: #c82333; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); }
-        .modal-btn.secondary { background: #6c757d; color: white; }
-        .modal-btn.secondary:hover { background: #5a6268; }
-
-        .custom-select { position: relative; width: 100%; margin: 15px 0; }
-
+        /* Custom select */
+        .custom-select { position: relative; min-width: 220px; }
         .select-selected {
             background: white;
             border: 2px solid #e0e0e0;
-            border-radius: 25px;
-            padding: 12px 15px;
-            font-size: 14px;
+            border-radius: 22px;
+            padding: 10px 16px;
+            font-size: 13px;
             cursor: pointer;
             user-select: none;
             display: flex;
@@ -330,9 +296,7 @@
             align-items: center;
             transition: border-color 0.15s ease;
         }
-
         .select-selected:hover { border-color: #667eea; }
-
         .select-selected:after {
             content: '';
             width: 0; height: 0;
@@ -342,115 +306,466 @@
             margin-left: 10px;
             transition: transform 0.2s ease;
         }
-
         .select-selected.select-arrow-active:after { transform: rotate(180deg); }
-
         .select-items {
             position: absolute;
             top: 100%; left: 0; right: 0;
             background: white;
             border: 2px solid #667eea;
-            border-radius: 15px;
+            border-radius: 14px;
             margin-top: 5px;
             overflow: hidden;
-            z-index: 1000;
+            z-index: 100;
             display: none;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.18);
         }
-
         .select-items.show { display: block; }
-
         .select-item {
-            padding: 12px 15px;
+            padding: 10px 16px;
             cursor: pointer;
+            font-size: 13px;
             transition: background-color 0.15s ease;
-            border-bottom: 1px solid #f0f0f0;
         }
-
-        .select-item:last-child { border-bottom: none; }
         .select-item:hover { background: #f5f5f5; }
         .select-item.selected { background: #667eea; color: white; }
-        .select-item.selected:hover { background: #5a6fd6; }
 
-        .dropdown-container { overflow: visible; }
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 28px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-header h2 { color: #2c3e50; font-size: 18px; }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .close-btn:hover { color: #333; }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+        .modal-btn {
+            flex: 1;
+            min-width: 130px;
+            padding: 10px;
+            border: none;
+            border-radius: 22px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease;
+            font-size: 13px;
+        }
+        .modal-btn.primary { background: #667eea; color: white; }
+        .modal-btn.primary:hover { background: #5a6fd6; }
+        .modal-btn.danger { background: #dc3545; color: white; }
+        .modal-btn.danger:hover { background: #c82333; }
+        .modal-btn.secondary { background: #6c757d; color: white; }
+        .modal-btn.secondary:hover { background: #5a6268; }
+
+        .session-list { list-style: none; max-height: 320px; overflow-y: auto; }
+        .session-item {
+            padding: 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .session-item:hover { background: #f5f5f5; border-color: #667eea; }
+        .session-item.selected { border: 3px solid #667eea; background: #f0f4ff; }
+        .session-item.current { background: #28a745; color: white; border-color: #28a745; }
+        .session-item.active { background: #667eea; color: white; border-color: #667eea; }
+        .session-item.inactive { background: #f0f0f0; color: #999; opacity: 0.7; }
+        .session-id { font-weight: 600; margin-bottom: 4px; }
+        .session-details { font-size: 12px; opacity: 0.8; }
 
         .toast {
             position: fixed;
             bottom: 30px; right: 30px;
             background: #28a745;
             color: white;
-            padding: 15px 25px;
+            padding: 14px 22px;
             border-radius: 50px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            z-index: 1001;
+            z-index: 3000;
         }
-
         .toast.error { background: #dc3545; }
 
-        #confirmModal .modal-content { border-radius: 20px; overflow: hidden; }
-        #confirmModal .modal-header {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
-        }
-        #confirmModal .modal-header h2 { color: #495057; font-size: 20px; font-weight: 600; }
-        #confirmModal .modal-buttons { padding: 20px; background: #f8f9fa; border-top: 1px solid #dee2e6; }
-        #confirmModal .modal-btn { padding: 12px 25px; font-size: 14px; font-weight: 600; border-radius: 25px; }
-
-        @media (max-width: 600px) {
-            .avatar-section { flex-direction: column; text-align: center; }
+        @media (max-width: 768px) {
+            .body-row { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e9ecef; }
+            .sidebar-section { display: none; }
+            .menu-item { display: inline-flex; padding: 10px 14px; margin: 4px; }
             .input-group { flex-direction: column; }
-            .input-field { min-width: 100%; }
-            .session-buttons { flex-direction: column; }
-            .nav-buttons { flex-direction: column; }
-            .modal-buttons { flex-direction: column; }
-            .modal-btn { width: 100%; }
+            .row { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
     <div class="settings-container">
         <div class="header">
-            <h1>Настройки профиля</h1>
-            <p>Управляйте своим аккаунтом</p>
+            <div>
+                <h1>Настройки</h1>
+                <p>Управляйте своим аккаунтом и приложением</p>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="backToChat()">← В чат</button>
+                <button class="header-btn danger" onclick="logout()">Выйти</button>
+            </div>
         </div>
 
-        <div class="content" id="mainContent">
-            <div class="avatar-section">
-                <div class="avatar-wrapper">
-                    <img id="avatarImg" src="" alt="Avatar" class="avatar">
+        <div class="body-row">
+            <div class="sidebar">
+                <div class="sidebar-section">Аккаунт</div>
+                <div class="menu-item active" data-pane="profile" onclick="selectPane('profile')">
+                    <span class="menu-icon">👤</span><span>Профиль</span>
                 </div>
-                <div>
-                    <div class="avatar-label">Ваш аватар</div>
-                    <button class="avatar-btn" onclick="changeAvatar()">Изменить аватар</button>
+                <div class="menu-item" data-pane="privacy" onclick="selectPane('privacy')">
+                    <span class="menu-icon">🔒</span><span>Конфиденциальность</span>
+                </div>
+                <div class="menu-item" data-pane="security" onclick="selectPane('security')">
+                    <span class="menu-icon">🛡️</span><span>Безопасность</span>
+                </div>
+
+                <div class="sidebar-section">Приложение</div>
+                <div class="menu-item" data-pane="notifications" onclick="selectPane('notifications')">
+                    <span class="menu-icon">🔔</span><span>Уведомления</span>
+                </div>
+                <div class="menu-item" data-pane="appearance" onclick="selectPane('appearance')">
+                    <span class="menu-icon">🎨</span><span>Внешний вид</span>
+                </div>
+                <div class="menu-item" data-pane="chats" onclick="selectPane('chats')">
+                    <span class="menu-icon">💬</span><span>Чаты и медиа</span>
+                </div>
+                <div class="menu-item" data-pane="advanced" onclick="selectPane('advanced')">
+                    <span class="menu-icon">⚙️</span><span>Продвинутые</span>
                 </div>
             </div>
 
-            <div class="section">
-                <div class="section-title">Смена имени</div>
-                <div class="input-group">
-                    <input type="text" id="nameInput" class="input-field" placeholder="Введите новое имя">
-                    <button class="action-btn" onclick="changeName()">Изменить имя</button>
+            <div class="content">
+
+                <div class="pane active" id="pane-profile">
+                    <div class="pane-title">Профиль</div>
+                    <div class="pane-subtitle">Имя, аватар и основные данные.</div>
+
+                    <div class="avatar-section">
+                        <div class="avatar-wrapper">
+                            <img id="avatarImg" src="" alt="Avatar" class="avatar">
+                        </div>
+                        <div>
+                            <div class="avatar-label">Ваш аватар</div>
+                            <div class="avatar-hint">JPG / PNG до 150 КБ.</div>
+                            <button class="action-btn" onclick="changeAvatar()">Изменить аватар</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Имя пользователя</div>
+                        <div class="input-group">
+                            <input type="text" id="nameInput" class="input-field" placeholder="Введите новое имя">
+                            <button class="action-btn" onclick="changeName()">Сохранить</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Смена пароля</div>
+                        <div class="input-group">
+                            <input type="password" id="passwordInput" class="input-field" placeholder="Новый пароль">
+                            <input type="password" id="confirmPasswordInput" class="input-field" placeholder="Повторите пароль">
+                            <button class="action-btn" onclick="changePassword()">Изменить пароль</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="section">
-                <div class="section-title">Смена пароля</div>
-                <div class="input-group">
-                    <input type="password" id="passwordInput" class="input-field" placeholder="Новый пароль">
-                    <input type="password" id="confirmPasswordInput" class="input-field" placeholder="Повторите пароль">
-                    <button class="action-btn" onclick="changePassword()">Изменить пароль</button>
+                <div class="pane" id="pane-privacy">
+                    <div class="pane-title">Конфиденциальность</div>
+                    <div class="pane-subtitle">Контролируйте, что видят о вас другие пользователи.</div>
+
+                    <div class="card">
+                        <div class="card-title">Онлайн-статус</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Скрыть мой статус</div>
+                                <div class="row-desc">Никто не увидит «в сети» и «был(а) недавно». Сервер перестаёт собирать данные о вас.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleHideOnline" onchange="onTogglePrivacy('hide_online_status', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Не показывать статусы контактов</div>
+                                <div class="row-desc">Локально скрыть онлайн-индикаторы у контактов в этом приложении.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleHideContactsStatus" onchange="onLocalToggle('hide_contacts_status', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Чтение сообщений</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Подтверждать прочтение</div>
+                                <div class="row-desc">Локальная настройка отображения «прочитано». Не отключает E2EE.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleReadReceipts" onchange="onLocalToggle('read_receipts', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="session-buttons">
-                <button class="session-btn" onclick="showSessions()">Управление сессиями</button>
-                <button class="session-btn" onclick="showCleanup()">Настройка очистки</button>
-            </div>
+                <div class="pane" id="pane-security">
+                    <div class="pane-title">Безопасность</div>
+                    <div class="pane-subtitle">Сессии, очистка и шифрование.</div>
 
-            <div class="nav-buttons">
-                <button class="back-btn" onclick="backToChat()">← Вернуться в чат</button>
-                <button class="logout-btn" onclick="logout()">Выйти</button>
+                    <div class="card">
+                        <div class="card-title">Сессии</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Активные сессии</div>
+                                <div class="row-desc">Список ваших устройств и токенов с возможностью завершить любую.</div>
+                            </div>
+                            <button class="action-btn outline" onclick="showSessions()">Открыть</button>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Автоматическая очистка завершённых сессий</div>
+                                <div class="row-desc">Когда удалять завершённые сессии из истории.</div>
+                            </div>
+                            <button class="action-btn outline" onclick="showCleanup()">Настроить</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Шифрование</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">E2EE / Signal Protocol</div>
+                                <div class="row-desc">X3DH + Double Ratchet. Сообщения, файлы и видео шифруются на устройстве.</div>
+                            </div>
+                            <span style="color:#28a745;font-weight:600;font-size:13px;">Активно</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pane" id="pane-notifications">
+                    <div class="pane-title">Уведомления</div>
+                    <div class="pane-subtitle">Звуки, превью и поведение оповещений (хранятся локально).</div>
+
+                    <div class="card">
+                        <div class="card-title">Поведение</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Включить уведомления</div>
+                                <div class="row-desc">Показывать всплывающие уведомления о новых сообщениях.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleNotifications" onchange="onLocalToggle('notifications_enabled', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Звук</div>
+                                <div class="row-desc">Воспроизводить звук при получении сообщения.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleSound" onchange="onLocalToggle('sound_enabled', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Превью текста</div>
+                                <div class="row-desc">Показывать первую строку сообщения в уведомлении.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="togglePreview" onchange="onLocalToggle('preview_enabled', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pane" id="pane-appearance">
+                    <div class="pane-title">Внешний вид</div>
+                    <div class="pane-subtitle">Тема, размер шрифта, оформление чата.</div>
+
+                    <div class="card">
+                        <div class="card-title">Тема</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Цветовая схема</div>
+                                <div class="row-desc">Светлая или тёмная.</div>
+                            </div>
+                            <div class="custom-select" id="themeSelect">
+                                <div class="select-selected" onclick="toggleSelectDropdown('themeSelect', event)"><span data-display>Светлая</span></div>
+                                <div class="select-items">
+                                    <div class="select-item selected" data-value="light" onclick="pickSelectOption('themeSelect', this, event)">Светлая</div>
+                                    <div class="select-item" data-value="dark" onclick="pickSelectOption('themeSelect', this, event)">Тёмная</div>
+                                    <div class="select-item" data-value="auto" onclick="pickSelectOption('themeSelect', this, event)">Системная</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Шрифт</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Размер шрифта</div>
+                                <div class="row-desc">Влияет на сообщения в чате.</div>
+                            </div>
+                            <div class="custom-select" id="fontSizeSelect">
+                                <div class="select-selected" onclick="toggleSelectDropdown('fontSizeSelect', event)"><span data-display>Средний</span></div>
+                                <div class="select-items">
+                                    <div class="select-item" data-value="small" onclick="pickSelectOption('fontSizeSelect', this, event)">Мелкий</div>
+                                    <div class="select-item selected" data-value="medium" onclick="pickSelectOption('fontSizeSelect', this, event)">Средний</div>
+                                    <div class="select-item" data-value="large" onclick="pickSelectOption('fontSizeSelect', this, event)">Крупный</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pane" id="pane-chats">
+                    <div class="pane-title">Чаты и медиа</div>
+                    <div class="pane-subtitle">Поведение чатов, отправка медиа и кэш.</div>
+
+                    <div class="card">
+                        <div class="card-title">Сообщения</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Отправка по Enter</div>
+                                <div class="row-desc">Если выключено — Enter будет переносить строку.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleEnterSend" onchange="onLocalToggle('enter_send', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Markdown в сообщениях</div>
+                                <div class="row-desc">Преобразовывать **жирный**, *курсив*, ссылки.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleMarkdown" onchange="onLocalToggle('markdown_enabled', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Медиа</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Авто-загрузка изображений</div>
+                                <div class="row-desc">Автоматически скачивать превью при получении.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleAutoLoadImages" onchange="onLocalToggle('autoload_images', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Авто-воспроизведение видео</div>
+                                <div class="row-desc">Запускать видео сразу при открытии в полноэкранном режиме.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleAutoPlayVideo" onchange="onLocalToggle('autoplay_video', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Звук видео по умолчанию</div>
+                                <div class="row-desc">При открытии включать звук.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleVideoSound" onchange="onLocalToggle('video_sound', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Кэш</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Очистить кэш медиа</div>
+                                <div class="row-desc">Удалит локальные расшифрованные файлы и превью.</div>
+                            </div>
+                            <button class="action-btn outline" onclick="clearMediaCache()">Очистить</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pane" id="pane-advanced">
+                    <div class="pane-title">Продвинутые</div>
+                    <div class="pane-subtitle">Сетевые и системные настройки.</div>
+
+                    <div class="card">
+                        <div class="card-title">Соединение</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Авто-переподключение SSE</div>
+                                <div class="row-desc">Переподключаться к серверу событий при разрыве.</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleSseReconnect" onchange="onLocalToggle('sse_reconnect', this.checked)" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Опасная зона</div>
+                        <div class="row">
+                            <div class="row-text">
+                                <div class="row-label">Удалить локальные ключи и сессии</div>
+                                <div class="row-desc">Сбросит установленные сессии Double Ratchet. Сообщения придётся переустановить (контакт должен написать первым).</div>
+                            </div>
+                            <button class="action-btn danger" onclick="confirmResetSessions()">Сбросить</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -476,18 +791,18 @@
                 <h2>Настройка очистки сессий</h2>
                 <button class="close-btn" onclick="closeModal('cleanupModal')">&times;</button>
             </div>
-            <p style="margin-bottom: 15px; color: #666;">Выберите интервал автоматической очистки завершенных сессий:</p>
-            <div class="custom-select" id="cleanupSelect">
-                <div class="select-selected" onclick="toggleDropdown(event)">
-                    <span id="selectedOption">Немедленно</span>
+            <p style="margin-bottom: 14px; color: #666; font-size: 13px;">Выберите интервал автоматической очистки завершённых сессий.</p>
+            <div class="custom-select" id="cleanupSelect" style="width: 100%;">
+                <div class="select-selected" onclick="toggleSelectDropdown('cleanupSelect', event)">
+                    <span data-display id="selectedOption">Немедленно</span>
                 </div>
                 <div class="select-items" id="dropdownItems">
-                    <div class="select-item selected" data-value="0" onclick="selectOption(this, event)">Немедленно</div>
-                    <div class="select-item" data-value="86400" onclick="selectOption(this, event)">Каждый день (24 часа)</div>
-                    <div class="select-item" data-value="259200" onclick="selectOption(this, event)">Каждые 3 дня</div>
-                    <div class="select-item" data-value="604800" onclick="selectOption(this, event)">Каждую неделю</div>
-                    <div class="select-item" data-value="1209600" onclick="selectOption(this, event)">Каждые 2 недели</div>
-                    <div class="select-item" data-value="2592000" onclick="selectOption(this, event)">Каждый месяц (30 дней)</div>
+                    <div class="select-item selected" data-value="0" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(0)">Немедленно</div>
+                    <div class="select-item" data-value="86400" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(86400)">Каждый день (24 часа)</div>
+                    <div class="select-item" data-value="259200" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(259200)">Каждые 3 дня</div>
+                    <div class="select-item" data-value="604800" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(604800)">Каждую неделю</div>
+                    <div class="select-item" data-value="1209600" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(1209600)">Каждые 2 недели</div>
+                    <div class="select-item" data-value="2592000" onclick="pickSelectOption('cleanupSelect', this, event); selectCleanupOption(2592000)">Каждый месяц (30 дней)</div>
                 </div>
             </div>
             <div class="modal-buttons">
@@ -498,20 +813,18 @@
     </div>
 
     <div id="confirmModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header">
                 <h2>Подтверждение</h2>
                 <button class="close-btn" onclick="closeConfirmModal()">&times;</button>
             </div>
-            <div style="padding: 20px 0; text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-                <p id="confirmMessage" style="font-size: 16px; color: #333; margin-bottom: 25px; line-height: 1.5;">
-                    Вы уверены, что хотите завершить все сессии кроме текущей?
-                </p>
+            <div style="padding: 14px 0; text-align: center;">
+                <div style="font-size: 44px; margin-bottom: 14px;">⚠️</div>
+                <p id="confirmMessage" style="font-size: 15px; color: #333; margin-bottom: 18px; line-height: 1.5;">Уверены?</p>
             </div>
-            <div class="modal-buttons" style="justify-content: center;">
-                <button class="modal-btn secondary" onclick="closeConfirmModal()" style="min-width: 120px;">Отмена</button>
-                <button class="modal-btn danger" id="confirmActionBtn" onclick="executeConfirmAction()" style="min-width: 120px;">Завершить</button>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closeConfirmModal()">Отмена</button>
+                <button class="modal-btn danger" onclick="executeConfirmAction()">Подтвердить</button>
             </div>
         </div>
     </div>
@@ -521,11 +834,10 @@
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     <script>
         let backend = null;
-        let currentAvatarVersion = 0;
         let sessions = [];
         let selectedSessionId = null;
         let currentInterval = 0;
-        let isDropdownOpen = false;
+        let openDropdownId = null;
         let defaultAvatarBase64 = '';
         let confirmAction = null;
 
@@ -534,14 +846,22 @@
             backend.loadUserData();
         });
 
-        window.onload = function() {
-            document.addEventListener('click', function(event) {
-                const select = document.getElementById('cleanupSelect');
-                if (select && !select.contains(event.target) && isDropdownOpen) {
-                    closeDropdown();
-                }
+        document.addEventListener('click', function(event) {
+            if (!openDropdownId) return;
+            const sel = document.getElementById(openDropdownId);
+            if (sel && !sel.contains(event.target)) {
+                closeSelectDropdown(openDropdownId);
+            }
+        });
+
+        function selectPane(pane) {
+            document.querySelectorAll('.menu-item').forEach(el => {
+                el.classList.toggle('active', el.getAttribute('data-pane') === pane);
             });
-        };
+            document.querySelectorAll('.pane').forEach(el => {
+                el.classList.toggle('active', el.id === 'pane-' + pane);
+            });
+        }
 
         function setDefaultAvatarFromBase64(base64Data) {
             defaultAvatarBase64 = base64Data;
@@ -554,40 +874,6 @@
             }
         }
 
-        function toggleDropdown(event) {
-            event.stopPropagation();
-            if (isDropdownOpen) { closeDropdown(); } else { openDropdown(); }
-        }
-
-        function openDropdown() {
-            const dropdown = document.getElementById('dropdownItems');
-            const selected = document.querySelector('.select-selected');
-            const modalContent = document.getElementById('cleanupModalContent');
-            dropdown.classList.add('show');
-            selected.classList.add('select-arrow-active');
-            isDropdownOpen = true;
-            modalContent.style.maxHeight = (modalContent.scrollHeight + dropdown.scrollHeight) + 'px';
-        }
-
-        function closeDropdown() {
-            const dropdown = document.getElementById('dropdownItems');
-            const selected = document.querySelector('.select-selected');
-            const modalContent = document.getElementById('cleanupModalContent');
-            dropdown.classList.remove('show');
-            selected.classList.remove('select-arrow-active');
-            isDropdownOpen = false;
-            modalContent.style.maxHeight = '';
-        }
-
-        function selectOption(element, event) {
-            event.stopPropagation();
-            document.querySelectorAll('.select-item').forEach(item => item.classList.remove('selected'));
-            element.classList.add('selected');
-            document.getElementById('selectedOption').textContent = element.textContent;
-            currentInterval = parseInt(element.getAttribute('data-value'));
-            closeDropdown();
-        }
-
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -597,12 +883,73 @@
         }
 
         function changeAvatar() { if (backend) backend.changeAvatar(); }
-        function changeName() { const name = document.getElementById('nameInput').value.trim(); if (name && backend) backend.changeName(name); }
-        function changePassword() { const p = document.getElementById('passwordInput').value; const c = document.getElementById('confirmPasswordInput').value; if (backend) backend.changePassword(p, c); }
+        function changeName() { const n = document.getElementById('nameInput').value.trim(); if (n && backend) backend.changeName(n); }
+        function changePassword() {
+            const p = document.getElementById('passwordInput').value;
+            const c = document.getElementById('confirmPasswordInput').value;
+            if (backend) backend.changePassword(p, c);
+        }
         function showSessions() { if (backend) backend.showSessions(); }
         function showCleanup() { if (backend) backend.showCleanup(); }
         function backToChat() { if (backend) backend.backToChat(); }
         function logout() { if (backend) backend.logout(); }
+        function clearMediaCache() {
+            showConfirmModal('Очистить локальный кэш медиа?', function() {
+                if (backend) backend.clearMediaCache();
+            });
+        }
+        function confirmResetSessions() {
+            showConfirmModal('Сбросить все локальные крипто-сессии? Это действие необратимо.', function() {
+                if (backend) backend.resetSessions();
+            });
+        }
+
+        function onTogglePrivacy(key, value) {
+            if (backend) backend.savePrivacy(key, value);
+        }
+        function onLocalToggle(key, value) {
+            if (backend) backend.saveLocalPref(key, value);
+        }
+        function onLocalSelect(key, value) {
+            if (backend) backend.saveLocalPrefStr(key, value);
+        }
+
+        function toggleSelectDropdown(selectId, event) {
+            event.stopPropagation();
+            if (openDropdownId === selectId) {
+                closeSelectDropdown(selectId);
+            } else {
+                if (openDropdownId) closeSelectDropdown(openDropdownId);
+                openSelectDropdown(selectId);
+            }
+        }
+        function openSelectDropdown(selectId) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.querySelector('.select-items').classList.add('show');
+            sel.querySelector('.select-selected').classList.add('select-arrow-active');
+            openDropdownId = selectId;
+        }
+        function closeSelectDropdown(selectId) {
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.querySelector('.select-items').classList.remove('show');
+            sel.querySelector('.select-selected').classList.remove('select-arrow-active');
+            if (openDropdownId === selectId) openDropdownId = null;
+        }
+        function pickSelectOption(selectId, element, event) {
+            event.stopPropagation();
+            const sel = document.getElementById(selectId);
+            if (!sel) return;
+            sel.querySelectorAll('.select-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            sel.querySelector('.select-selected [data-display]').textContent = element.textContent;
+            const value = element.getAttribute('data-value');
+            closeSelectDropdown(selectId);
+            if (selectId === 'themeSelect') onLocalSelect('theme', value);
+            else if (selectId === 'fontSizeSelect') onLocalSelect('font_size', value);
+        }
+        function selectCleanupOption(seconds) { currentInterval = seconds; }
 
         function updateSessionsList(sessionsData) {
             const list = document.getElementById('sessionsList');
@@ -611,48 +958,45 @@
             selectedSessionId = null;
             sessions.forEach(session => {
                 const item = document.createElement('div');
-                if (session.is_current) { item.className = 'session-item current'; }
-                else if (session.is_active) { item.className = 'session-item active'; }
-                else { item.className = 'session-item inactive'; }
+                if (session.is_current) item.className = 'session-item current';
+                else if (session.is_active) item.className = 'session-item active';
+                else item.className = 'session-item inactive';
                 item.onclick = function(e) {
                     e.stopPropagation();
                     document.querySelectorAll('.session-item').forEach(el => el.classList.remove('selected'));
                     this.classList.add('selected');
                     selectedSessionId = session.session_id;
                 };
-                const sessionId = document.createElement('div');
-                sessionId.className = 'session-id';
-                sessionId.textContent = session.session_id.substring(0, 8) + '...';
+                const sId = document.createElement('div');
+                sId.className = 'session-id';
+                sId.textContent = session.session_id.substring(0, 8) + '...';
                 const created = session.created_at ? session.created_at.substring(0, 16) : 'неизвестно';
                 const lastUsed = session.last_used_at ? session.last_used_at.substring(0, 16) : 'неизвестно';
                 const status = session.is_current ? 'Текущая' : (session.is_active ? 'Активна' : 'Неактивна');
-                const details = document.createElement('div');
-                details.className = 'session-details';
-                details.textContent = `Создана: ${created} | Последняя активность: ${lastUsed} | ${status}`;
-                item.appendChild(sessionId);
-                item.appendChild(details);
+                const det = document.createElement('div');
+                det.className = 'session-details';
+                det.textContent = `Создана: ${created} | Последняя активность: ${lastUsed} | ${status}`;
+                item.appendChild(sId);
+                item.appendChild(det);
                 list.appendChild(item);
             });
         }
 
         function logoutSelectedSession() {
-            if (!selectedSessionId) { showToast('Выберите сессию для завершения', true); return; }
-            const session = sessions.find(s => s.session_id === selectedSessionId);
-            if (session && session.is_current) { showToast('Нельзя завершить текущую сессию', true); return; }
+            if (!selectedSessionId) { showToast('Выберите сессию', true); return; }
+            const s = sessions.find(x => x.session_id === selectedSessionId);
+            if (s && s.is_current) { showToast('Нельзя завершить текущую сессию', true); return; }
             if (backend) backend.logoutSelectedSession(selectedSessionId);
         }
 
         function logoutAllSessions() {
-            showConfirmModal('Вы уверены, что хотите завершить все сессии кроме текущей?', function() {
+            showConfirmModal('Завершить все сессии кроме текущей?', function() {
                 if (backend) backend.logoutAllSessions();
             });
         }
 
         function openModal(modalId) { document.getElementById(modalId).classList.add('active'); }
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-            if (modalId === 'cleanupModal' && isDropdownOpen) closeDropdown();
-        }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
 
         function saveCleanupSettings() { if (backend) backend.saveCleanupSettings(currentInterval); }
 
@@ -668,13 +1012,12 @@
 
         function setCleanupInterval(interval) {
             currentInterval = interval;
-            document.querySelectorAll('.select-item').forEach(option => {
-                const value = parseInt(option.getAttribute('data-value'));
-                if (value === interval) {
-                    option.classList.add('selected');
-                    document.getElementById('selectedOption').textContent = option.textContent;
-                } else {
-                    option.classList.remove('selected');
+            const sel = document.getElementById('cleanupSelect');
+            sel.querySelectorAll('.select-item').forEach(option => {
+                const v = parseInt(option.getAttribute('data-value'));
+                option.classList.toggle('selected', v === interval);
+                if (v === interval) {
+                    sel.querySelector('.select-selected [data-display]').textContent = option.textContent;
                 }
             });
         }
@@ -684,16 +1027,57 @@
             document.getElementById('confirmPasswordInput').value = '';
         }
 
-        function closeAllModals() { closeModal('sessionsModal'); closeModal('cleanupModal'); }
+        function closeAllModals() {
+            ['sessionsModal','cleanupModal','confirmModal'].forEach(closeModal);
+        }
 
         function showConfirmModal(message, actionCallback) {
             document.getElementById('confirmMessage').textContent = message;
             confirmAction = actionCallback;
             openModal('confirmModal');
         }
-
         function closeConfirmModal() { closeModal('confirmModal'); confirmAction = null; }
         function executeConfirmAction() { if (confirmAction) confirmAction(); closeConfirmModal(); }
+
+        // Apply preferences pushed from Python
+        window.applyPrivacyPreferences = function(prefs) {
+            if (!prefs) return;
+            const t = document.getElementById('toggleHideOnline');
+            if (t) t.checked = !!prefs.hide_online_status;
+        };
+
+        window.applyLocalPreferences = function(prefs) {
+            if (!prefs) return;
+            function setToggle(id, v, def=false) {
+                const el = document.getElementById(id);
+                if (el) el.checked = (v === undefined || v === null) ? def : !!v;
+            }
+            setToggle('toggleHideContactsStatus', prefs.hide_contacts_status, false);
+            setToggle('toggleReadReceipts', prefs.read_receipts, false);
+            setToggle('toggleNotifications', prefs.notifications_enabled, true);
+            setToggle('toggleSound', prefs.sound_enabled, true);
+            setToggle('togglePreview', prefs.preview_enabled, true);
+            setToggle('toggleEnterSend', prefs.enter_send, true);
+            setToggle('toggleMarkdown', prefs.markdown_enabled, true);
+            setToggle('toggleAutoLoadImages', prefs.autoload_images, true);
+            setToggle('toggleAutoPlayVideo', prefs.autoplay_video, true);
+            setToggle('toggleVideoSound', prefs.video_sound, false);
+            setToggle('toggleSseReconnect', prefs.sse_reconnect, true);
+
+            function setSelect(selectId, value, defLabel) {
+                const sel = document.getElementById(selectId);
+                if (!sel) return;
+                let foundLabel = defLabel;
+                sel.querySelectorAll('.select-item').forEach(item => {
+                    const isSel = item.getAttribute('data-value') === value;
+                    item.classList.toggle('selected', isSel);
+                    if (isSel) foundLabel = item.textContent;
+                });
+                sel.querySelector('.select-selected [data-display]').textContent = foundLabel;
+            }
+            if (prefs.theme) setSelect('themeSelect', prefs.theme, 'Светлая');
+            if (prefs.font_size) setSelect('fontSizeSelect', prefs.font_size, 'Средний');
+        };
     </script>
 </body>
 </html>
