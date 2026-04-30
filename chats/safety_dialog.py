@@ -89,6 +89,7 @@ class SafetyNumberDialog(QDialog):
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
 
+
     def _status_text(self):
         if is_verified(self.own_login, self.peer_login, self.peer_ik_b64):
             return '<span style="color: #2a9d2a;">✓ This contact is marked as verified.</span>'
