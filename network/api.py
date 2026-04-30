@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import base64
+import traceback
 from datetime import datetime, timezone
 from PyQt6.QtCore import QSettings
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -484,7 +485,8 @@ class MessengerAPI:
             try:
                 self.init_e2ee(master_key)
             except Exception as exc:
-                print(f'init_e2ee failed during register: {exc}')
+                print(f'init_e2ee failed register: {type(exc).__name__}: {exc}')
+                traceback.print_exc()
             callback(response)
         else:
             callback(response)
@@ -538,7 +540,8 @@ class MessengerAPI:
                     master_key = decrypt_master_key(encrypted, password)
                     self.init_e2ee(master_key)
                 except Exception as exc:
-                    print(f'init_e2ee failed during login: {exc}')
+                    print(f'init_e2ee failed login: {type(exc).__name__}: {exc}')
+                    traceback.print_exc()
             self.network_manager.start_event_listener()
             self.login_in_progress = False
             callback(response)
